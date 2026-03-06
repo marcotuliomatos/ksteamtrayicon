@@ -1,0 +1,65 @@
+.TH KSTEAMTRAYICON 1 "Março de 2026" "ksteamtrayicon" "Comandos do Usuário"
+.SH NOME
+ksteamtrayicon \- mantém o ícone da bandeja do Steam sincronizado com o esquema
+de cores da área de trabalho do KDE Plasma 6
+.SH SINOPSE
+.B ksteamtrayicon
+.SH DESCRIÇÃO
+.B ksteamtrayicon
+é um pequeno utilitário de sessão do usuário que monitora o esquema de cores da
+área de trabalho por meio da interface de configurações D-Bus do XDG Desktop
+Portal e atualiza o ícone da bandeja do Steam de acordo.
+.PP
+Para garantir contraste adequado em todos os temas da área de trabalho, quando o
+esquema de cores é reportado como
+.BR dark ,
+o programa exibe o ícone padrão
+.B light
+do Steam na bandeja. Caso contrário, ele exibe uma variante de ícone
+.B dark .
+.SH COMPORTAMENTO
+Na inicialização, o programa lê a configuração
+.B org.freedesktop.appearance color-scheme
+e sincroniza o ícone da bandeja do Steam com o esquema de cores atual da área de
+trabalho.
+.PP
+Em seguida, ele passa a escutar sinais
+.B SettingChanged
+na sessão D-Bus. Quando tal sinal é recebido, o ícone da bandeja é sincronizado
+novamente caso o esquema de cores tenha mudado.
+.PP
+O programa permanece em execução indefinidamente, mantendo o ícone da bandeja do
+Steam sincronizado com quaisquer mudanças posteriores no esquema de cores da
+área de trabalho.
+.SH ARQUIVOS
+.TP
+.I ~/.local/share/icons/steam_tray_mono.png
+Link simbólico gerenciado pelo programa.
+.TP
+.I /usr/share/ksteamtrayicon/dark-icon.png
+Ícone escuro do Steam usado quando um esquema de cores não escuro está ativo.
+.SH INTERFACE D-BUS
+O programa se comunica com os seguintes serviços e interfaces D-Bus:
+.TP
+.B org.freedesktop.portal.Desktop
+Usado para ler as configurações de aparência por meio de
+.BR org.freedesktop.portal.Settings .
+.TP
+.B org.freedesktop.DBus
+Usado para registrar uma regra de correspondência de sinais para mudanças nas
+configurações.
+.SH NOTAS
+Este utilitário foi projetado para ser executado em uma sessão de usuário, e
+não como um serviço de sistema. Ele depende de uma sessão D-Bus funcional e de
+uma implementação disponível do XDG Desktop Portal que exponha a interface de
+configurações de aparência.
+.SH AUTOR
+Escrito por Marco Matos (MegaDrive).
+.SH RELATANDO ERROS
+Relate erros em:
+.br
+https://github.com/marcotuliomatos/ksteamtrayicon/issues
+.SH VEJA TAMBÉM
+.BR man (1),
+.BR dbus (1),
+.BR dbus-daemon (1)

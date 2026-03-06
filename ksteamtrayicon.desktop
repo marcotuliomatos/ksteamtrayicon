@@ -1,0 +1,6 @@
+[Desktop Entry]
+Exec=/usr/bin/ksteamtrayicon.py
+Icon=/usr/share/ksteamtrayicon/dark-icon.png
+Name=ksteamtrayicon
+Type=Application
+X-KDE-AutostartScript=true

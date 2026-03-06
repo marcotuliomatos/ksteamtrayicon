@@ -1,0 +1,63 @@
+.TH KSTEAMTRAYICON 1 "March 2026" "ksteamtrayicon" "User Commands"
+.SH NAME
+ksteamtrayicon \- keep the Steam tray icon in sync with the KDE Plasma 6 desktop
+color scheme
+.SH SYNOPSIS
+.B ksteamtrayicon
+.SH DESCRIPTION
+.B ksteamtrayicon
+is a small user session utility that monitors the desktop color scheme through
+the XDG Desktop Portal D-Bus settings interface and updates the Steam tray
+icon accordingly.
+.PP
+To ensure proper contrast on all desktop themes, when the color scheme is
+reported as
+.BR dark ,
+the program displays the default
+.B light
+Steam tray icon. Otherwise, it displays a
+.B dark
+icon variant.
+.SH BEHAVIOR
+At startup, the program reads the
+.B org.freedesktop.appearance color-scheme
+setting and synchronizes the Steam tray icon with the current desktop color
+scheme.
+.PP
+It then listens for
+.B SettingChanged
+signals on the session D-Bus. When such a signal is received, the tray icon is
+synchronized again if the color scheme has changed.
+.PP
+The program runs indefinitely, keeping the Steam tray icon synchronized with any
+subsequent desktop color scheme changes.
+.SH FILES
+.TP
+.I ~/.local/share/icons/steam_tray_mono.png
+Symbolic link managed by the program.
+.TP
+.I /usr/share/ksteamtrayicon/dark-icon.png
+Dark Steam icon used when a non-dark color scheme is active.
+.SH D-BUS INTERFACE
+The program communicates with the following D-Bus services and interfaces:
+.TP
+.B org.freedesktop.portal.Desktop
+Used to read appearance settings through
+.BR org.freedesktop.portal.Settings .
+.TP
+.B org.freedesktop.DBus
+Used to register a signal match rule for settings changes.
+.SH NOTES
+This utility is intended to run in a user session, not as a system service. It
+depends on a working D-Bus session and an available XDG Desktop Portal
+implementation that exposes the appearance settings interface.
+.SH AUTHOR
+Written by Marco Matos (MegaDrive).
+.SH REPORTING BUGS
+Report bugs at:
+.br
+https://github.com/marcotuliomatos/ksteamtrayicon/issues
+.SH SEE ALSO
+.BR man (1),
+.BR dbus (1),
+.BR dbus-daemon (1)
