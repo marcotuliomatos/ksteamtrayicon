@@ -58,6 +58,5 @@ Report bugs at:
 .br
 https://github.com/marcotuliomatos/ksteamtrayicon/issues
 .SH SEE ALSO
-.BR man (1),
 .BR dbus (1),
 .BR dbus-daemon (1)
