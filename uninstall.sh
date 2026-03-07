@@ -10,7 +10,7 @@ KSTEAMTRAYICON_DIR="$PREFIX/share/ksteamtrayicon"
 BIN_DIR="$PREFIX/bin"
 MAN_DIR="$PREFIX/share/man"
 AUTOSTART_DIR="/etc/xdg/autostart"
-PLASMA_ICON_DIR = "~/.local/share/icons"
+PLASMA_ICON_DIR="~/.local/share/icons"
 
 rm -f "$KSTEAMTRAYICON_DIR/dark-icon.png"
 rm -f "$KSTEAMTRAYICON_DIR/ksteamtrayicon.py"
