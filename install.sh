@@ -11,7 +11,7 @@ for cmd in install ln gzip; do
         echo " Error. Command not found."
         exit 1
     else
-        echo " Found: `(which $cmd)`"
+        echo " Found: `(which "$cmd")`"
     fi
 done
 
