@@ -1,5 +1,5 @@
 [Desktop Entry]
-Exec=/usr/bin/ksteamtrayicon.py
+Exec=/usr/bin/ksteamtrayicon
 Icon=/usr/share/ksteamtrayicon/dark-icon.png
 Name=ksteamtrayicon
 Type=Application
