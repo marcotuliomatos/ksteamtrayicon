@@ -8,14 +8,14 @@ By default, steam displays a tray icon that looks fine on dark panels, but is ha
 
 The script listens for changes on the current desktop color scheme and then acts as follows:
 
-- if it detects that the current theme has a light color scheme, it overrides the default Steam tray icon by placing a symlink in `~/.local/share/icons/steam_tray_mono.png` which points to a custom dark-colored tray icon.
-- if it detects that the current theme has a dark color scheme, it removes the symlink, which changes the Steam tray icon to the default light-colored one.
+- if it detects that the current theme has a light color scheme, it overrides the default Steam tray icon by placing a symlink in `~/.local/share/icons/steam_tray_mono.png` pointing to a custom dark-colored tray icon.
+- if it detects that the current theme has a dark color scheme, it removes the symlink, which changes the Steam tray icon back to the default light-colored one.
 
 ## Requirements
 
 - KDE Plasma 6
 - Python 3
-- `dbus-next`
+- `dbus-next` (Python library)
 
 ## Installation
 
@@ -37,6 +37,8 @@ Next, install `dbus-next` with pip:
 pip install dbus-next
 ```
 
+Last, but not least, run the `install.sh` script, which will take care of the rest of the installation process:
+
 ```text
 ./install.sh
 ```
@@ -50,7 +52,7 @@ If you installed *ksteamtrayicon* via AUR, just remove the `ksteamtrayicon` pack
 sudo pacman -Rns ksteamtrayicon
 ```
 
-If you installed *ksteamtrayicon* using the provided `install.sh` script, just run the equally provided `uninstall.sh` script:
+If you installed *ksteamtrayicon* using the provided `install.sh` script, just run the also provided `uninstall.sh` script:
 ```text
 ./uninstall.sh
 ```
