@@ -27,6 +27,8 @@ An AUR package is available for Arch Linux and Arch-based distros. Install it wi
 yay -S ksteamtrayicon
 ```
 
+After installation, **restart your KDE Plasma session** to autorun the script.
+
 ### Other distros (`install.sh` script)
 
 First, make sure you are running KDE Plasma version 6.x.x and that Python 3 is installed in your system. If not, please refer to your distro documentation in order to properly install the correct packages.
@@ -43,7 +45,9 @@ Last, but not least, run the `install.sh` script, which will take care of the re
 ./install.sh
 ```
 
-Please note that the `install.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
+**Note:** the `install.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
+
+After installation, **restart your KDE Plasma session** to autorun the script.
 
 ## Uninstall
 
@@ -57,7 +61,7 @@ If you installed *ksteamtrayicon* using the provided `install.sh` script, just r
 ./uninstall.sh
 ```
 
-Please note that the `uninstall.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
+**Note:** the `uninstall.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
 
 ## License
 
