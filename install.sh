@@ -11,9 +11,43 @@ for cmd in install ln gzip; do
         echo " Error. Command not found."
         exit 1
     else
-        echo " OK (found in `(which $cmd)`)."
+        echo " Found: `(which $cmd)`"
     fi
 done
+
+printf "Checking for KDE Plasma..."
+if ! command -v plasmashell >/dev/null 2>&1; then
+    echo " Error. KDE Plasma was not found."
+    exit 1
+fi
+echo " Found."
+
+printf "Checking KDE Plasma version..."
+PLASMA_VERSION="$(plasmashell --version 2>/dev/null || true)"
+case "$PLASMA_VERSION" in
+    *" 6."*|*" 6")
+        echo " OK ($PLASMA_VERSION)."
+        ;;
+    *)
+        echo " Error. KDE Plasma 6 is required."
+        echo " Detected: ${PLASMA_VERSION:-unknown}"
+        exit 1
+        ;;
+esac
+
+printf "Checking Python 3..."
+if ! command -v python3 >/dev/null 2>&1; then
+    echo " Error. Python 3 not found."
+    exit 1
+fi
+echo " OK ($(python3 --version 2>&1))."
+
+printf "Checking Python library dbus-next..."
+if ! python3 -c 'import dbus_next' >/dev/null 2>&1; then
+    echo " Error. Python library dbus-next is not installed."
+    exit 1
+fi
+echo " Found."
 
 PREFIX="/usr"
 KSTEAMTRAYICON_DIR="$PREFIX/share/ksteamtrayicon"
