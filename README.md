@@ -1,15 +1,15 @@
 # ksteamtrayicon
 
-ksteamtrayicon is a small Python script for KDE Plasma 6 that keeps the Steam tray icon in sync with the desktop color scheme.
+*ksteamtrayicon* is a small Python script for KDE Plasma 6 that keeps the Steam tray icon in sync with the desktop color scheme.
 
 ## What it does
 
-By default, steam displays a tray icon that looks fine on dark panels but is hard to see on light Plasma themes.
+By default, steam displays a tray icon that looks fine on dark panels, but is hard to see on light Plasma themes.
 
-This script listens for changes on the current desktop color scheme and overrides the default Steam tray icon by placing a symlink in ~/.local/share/icons/steam_tray_mono.png pointing to:
+The script listens for changes on the current desktop color scheme and then acts as follows:
 
-- a custom dark-colored tray icon when a theme with light color scheme is in use
-- the default Steam light-colored tray icon, when a theme with dark color scheme is in use
+- if it detects that the current theme has a light color scheme, it overrides the default Steam tray icon by placing a symlink in `~/.local/share/icons/steam_tray_mono.png` which points to a custom dark-colored tray icon.
+- if it detects that the current theme has a dark color scheme, it removes the symlink, which changes the Steam tray icon to the default light-colored one.
 
 ## Requirements
 
@@ -19,67 +19,43 @@ This script listens for changes on the current desktop color scheme and override
 
 ## Installation
 
-### AUR
+### Arch Linux and Arch-based distros (AUR)
 
-An AUR package is available for Arch Linux and Arch-based distros. Install it with your preferred AUR helper.
+An AUR package is available for Arch Linux and Arch-based distros. Install it with your preferred AUR helper. For example:
 
 ```text
 yay -S ksteamtrayicon
 ```
 
-### Manual
+### Other distros (`install.sh` script)
 
-#### Install the required dependencies:
+First, make sure you are running KDE Plasma version 6.x.x and that Python 3 is installed in your system. If not, please refer to your distro documentation in order to properly install the correct packages.
 
-For Arch-based distros:
-
-```text
-sudo pacman -S python-dbus-next
-```
-
-For other distros, install with pip:
+Next, install `dbus-next` with pip:
 
 ```text
 pip install dbus-next
 ```
 
-#### Install the script:
-
-Create the asset directory:
-
 ```text
-sudo mkdir /usr/share/ksteamtrayicon/
+./install.sh
 ```
 
-Copy the script and the dark Steam tray icon:
-
-```text
-sudo cp ksteamtrayicon.py /usr/bin/
-sudo cp steam-tray-dark-icon.png /usr/share/ksteamtrayicon/
-sudo chmod +x /usr/bin/ksteamtrayicon.py
-```
-
-#### Install the autostart file:
-
-```text
-sudo cp ksteamtrayicon.desktop /etc/xdg/autostart/ksteamtrayicon.desktop
-```
+Please note that the `install.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
 
 ## Uninstall
 
-Remove the installed files:
-
+If you installed *ksteamtrayicon* via AUR, just remove the `ksteamtrayicon` package using pacman:
 ```text
-sudo rm -rf /usr/share/ksteamtrayicon/
-sudo rm -f /usr/bin/ksteamtrayicon.py
-sudo rm -f /etc/xdg/autostart/ksteamtrayicon.desktop
+sudo pacman -Rns ksteamtrayicon
 ```
 
-Remove the Steam tray icon override symlink if it exists:
-
+If you installed *ksteamtrayicon* using the provided `install.sh` script, just run the equally provided `uninstall.sh` script:
 ```text
-rm -f ~/.local/share/icons/steam_tray_mono.png
+./uninstall.sh
 ```
+
+Please note that the `uninstall.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
 
 ## License
 
