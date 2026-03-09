@@ -55,7 +55,13 @@ KSTEAMTRAYICON_DIR="$PREFIX/share/ksteamtrayicon"
 BIN_DIR="$PREFIX/bin"
 MAN_DIR="$PREFIX/share/man"
 AUTOSTART_DIR="/etc/xdg/autostart"
+[ -e /usr/bin/ksteamtrayicon ] && UPGRADING=true || UPGRADING=false
 
+if $UPGRADING; then
+    printf "\nUpgrading ksteamtrayicon..."
+else
+    printf "\nInstalling ksteamtrayicon..."
+fi
 install -d "$KSTEAMTRAYICON_DIR"
 install -m 644 dark-icon.png "$KSTEAMTRAYICON_DIR/dark-icon.png"
 install -m 755 ksteamtrayicon.py "$KSTEAMTRAYICON_DIR/ksteamtrayicon.py"
@@ -74,4 +80,27 @@ gzip -c man/ksteamtrayicon.1.pt_BR > "$MAN_DIR/pt_BR/man1/ksteamtrayicon.1.gz"
 
 command -v mandb >/dev/null 2>&1 || true
 
-echo "ksteamtrayicon installed successfully."
+echo "Done."
+
+cat << 'EOF'
+
+********************************************************************
+EOF
+
+if $UPGRADING; then
+    echo "*        Hooray! ksteamtrayicon was upgraded successfully.         *"
+else
+    echo "*        Hooray! ksteamtrayicon was installed successfully.        *"
+fi
+
+cat << 'EOF'
+********************************************************************
+*                                                                  *
+* To start the new version immediately, run the following command: *
+*     kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop     *
+*                                                                  *
+* Or simply log out of KDE Plasma and log back in.                 *
+*                                                                  *
+********************************************************************
+
+EOF
