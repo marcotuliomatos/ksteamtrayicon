@@ -2,7 +2,7 @@
 
 *ksteamtrayicon* is a small Python script for KDE Plasma 6 that keeps the Steam tray icon in sync with the desktop color scheme.
 
-## What it does
+## How does it work?
 
 By default, steam displays a tray icon that looks fine on dark panels, but is hard to see on light Plasma themes.
 
@@ -33,10 +33,21 @@ After installation, **restart your KDE Plasma session** to autorun the script.
 
 First, make sure you are running KDE Plasma version 6.x.x and that Python 3 is installed in your system. If not, please refer to your distro documentation in order to properly install the correct packages.
 
-Next, install `dbus-next` with pip:
+Next, install the python library `dbus-next`, either with your distro's package manager or with pip:
 
 ```text
 pip install dbus-next
+```
+
+Then, download the source code (tarball) for the latest release of *ksteamtrayicon* from [here](https://github.com/marcotuliomatos/ksteamtrayicon/releases/latest/) and extract its contents. For example:
+
+```text
+tar zvxf ./ksteamtrayicon-v1.0.3.tar.gz
+```
+
+Now, cd into the *ksteamtrayicon* folder:
+```text
+cd ksteamtrayicon
 ```
 
 Last, but not least, run the `install.sh` script, which will take care of the rest of the installation process:
