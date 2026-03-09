@@ -80,7 +80,7 @@ gzip -c man/ksteamtrayicon.1.pt_BR > "$MAN_DIR/pt_BR/man1/ksteamtrayicon.1.gz"
 
 command -v mandb >/dev/null 2>&1 || true
 
-echo "Done."
+echo " Done."
 
 cat << 'EOF'
 
@@ -96,7 +96,15 @@ fi
 cat << 'EOF'
 ********************************************************************
 *                                                                  *
-* To start the new version immediately, run the following command: *
+EOF
+
+if $UPGRADING; then
+    echo "* To start the new version immediately, run the following command: *"
+else
+    echo "* To start it immediately, run the following command:              *"
+fi
+
+cat << 'EOF'
 *     kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop     *
 *                                                                  *
 * Or simply log out of KDE Plasma and log back in.                 *
