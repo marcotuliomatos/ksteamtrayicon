@@ -23,14 +23,15 @@ fi
 echo " Found."
 
 printf "Checking KDE Plasma version..."
-PLASMA_VERSION="$(plasmashell --version 2>/dev/null || true)"
+PLASMA_VERSION="$(QT_QPA_PLATFORM=offscreen kded6 --version 2>/dev/null || true)"
+PLASMA_VERSION="KDE ${PLASMA_VERSION/kded6 /}"
 case "$PLASMA_VERSION" in
-    *" 6."*|*" 6")
+    "KDE 6."*|"KDE 6")
         echo " OK ($PLASMA_VERSION)."
         ;;
     *)
-        echo " Error. KDE Plasma 6 is required."
-        echo " Detected: ${PLASMA_VERSION:-unknown}"
+        echo " Error."
+        echo "KDE Plasma 6 is required. Version found: ${PLASMA_VERSION:-unknown}"
         exit 1
         ;;
 esac
