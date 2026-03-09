@@ -26,18 +26,14 @@ def decode_color_scheme(value):
 def update_icon(scheme):
     destination = os.path.join(PLASMA_ICON_DIR, DEFAULT_ICON_FILENAME)
 
-    if scheme == "dark":
-        if os.path.islink(destination):
-            os.unlink(destination)
-    else:
+    if os.path.islink(destination):
+        os.unlink(destination)
 
-        if os.path.exists(destination) and not os.path.islink(destination):
+    if scheme != "dark":
+        if os.path.exists(destination):
             print('Unable to fix the steam tray icon: "' + destination + 
                   '" already exists')
             return
-
-        if os.path.islink(destination):
-            os.unlink(destination)
 
         os.symlink(
             os.path.join(DARK_ICON_DIR, DARK_ICON_FILENAME),
