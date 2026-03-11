@@ -40,7 +40,7 @@ def update_icon(scheme):
             os.path.join(PLASMA_ICON_DIR, DEFAULT_ICON_FILENAME)
         )
 
-    print("Icon changed to match", scheme, "color scheme")
+    print("Icon set to match", scheme, "color scheme")
 
 async def read_color_scheme(bus):
     msg = Message(
