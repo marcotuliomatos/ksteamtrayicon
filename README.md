@@ -21,10 +21,21 @@ The script listens for changes on the current desktop color scheme and then acts
 
 ### Arch Linux and Arch-based distros (AUR)
 
-An AUR package is available for Arch Linux and Arch-based distros. Install it with your preferred AUR helper. For example:
+[An AUR package is available](https://aur.archlinux.org/packages/ksteamtrayicon) for Arch Linux and Arch-based distros. To install it using your preferred AUR helper, you can issue a command like `aur-helper-command-name -S ksteamtrayicon`.
 
+If you use `yay`:
 ```text
 yay -S ksteamtrayicon
+```
+
+If you use `paru`:
+```text
+paru -S ksteamtrayicon
+```
+
+If you use `pikaur`:
+```text
+pikaur -S ksteamtrayicon
 ```
 
 After installation, **restart your KDE Plasma session** to autorun the script.
