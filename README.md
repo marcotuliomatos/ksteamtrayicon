@@ -38,7 +38,10 @@ If you use `pikaur`:
 pikaur -S ksteamtrayicon
 ```
 
-After installation, **restart your KDE Plasma session** to autorun the script.
+After installation, **restart your KDE Plasma session** to autorun the script or simply issue the following command:
+```text
+kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop
+```
 
 ### Other distros (`install.sh` script)
 
@@ -69,7 +72,10 @@ Last, but not least, run the `install.sh` script, which will take care of the re
 
 **Note:** the `install.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
 
-After installation, **restart your KDE Plasma session** to autorun the script.
+After installation, **restart your KDE Plasma session** to autorun the script or simply issue the following command:
+```text
+kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop
+```
 
 ## Uninstall
 
