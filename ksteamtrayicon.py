@@ -1,17 +1,34 @@
 #!/usr/bin/env python3
 import asyncio
-import os
-import signal
+import shutil
+from pathlib import Path
 from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType, MessageType, NameFlag, RequestNameReply
 from dbus_next.message import Message
+from dbus_next.service import ServiceInterface, method
 from dbus_next.signature import Variant
 
-PLASMA_ICON_DIR = os.path.expanduser("~/.local/share/icons/")
-DARK_ICON_DIR = os.path.dirname(os.path.realpath(__file__))
+PLASMA_ICON_DIR = Path.home() / ".local" / "share" / "icons"
 DEFAULT_ICON_FILENAME = "steam_tray_mono.png"
 DARK_ICON_FILENAME = "dark-icon.png"
-BUS_NAME = "com.github.marcotuliomatos.ksteamtrayicon"
+APP_ID = "io.github.marcotuliomatos.ksteamtrayicon"
+
+DARK_ICON_DIR = Path(__file__).resolve().parent
+OBJECT_PATH = f"/{APP_ID.replace(".", "/")}"
+CONTROL_INTERFACE = f"{APP_ID}.Control"
+
+
+class ControlInterface(ServiceInterface):
+    def __init__(self, shutdown_event: asyncio.Event):
+        super().__init__(CONTROL_INTERFACE)
+        self._shutdown_event = shutdown_event
+
+    @method()
+    def Quit(self) -> "b":
+        print("Shutdown request received over D-Bus")
+        self._shutdown_event.set()
+        return True
+
 
 def decode_color_scheme(value):
     if isinstance(value, Variant):
@@ -23,24 +40,28 @@ def decode_color_scheme(value):
         2: "light",
     }.get(value, f"unknown({value})")
 
-def update_icon(scheme):
-    destination = os.path.join(PLASMA_ICON_DIR, DEFAULT_ICON_FILENAME)
 
-    if os.path.islink(destination):
-        os.unlink(destination)
+def update_icon(scheme):
+    source = DARK_ICON_DIR / DARK_ICON_FILENAME
+    destination = PLASMA_ICON_DIR / DEFAULT_ICON_FILENAME
+
+    if destination.is_dir():
+        raise RuntimeError(f'Unable to fix the steam tray icon: "{destination}" already exists and is a directory')
+    elif destination.is_symlink() or destination.is_file():
+        try:
+            destination.unlink()
+        except PermissionError:
+            raise RuntimeError(f'Failed to remove "{destination}": Permission denied.')
+        except IsADirectoryError:
+            raise RuntimeError(f'Failed to remove "{destination}": this path is a directory, not a file or symlink')
+        except Exception as e:
+            raise RuntimeError(f'Failed to remove "{destination}" due to an unexpected error: {e}')
 
     if scheme != "dark":
-        if os.path.exists(destination):
-            print('Unable to fix the steam tray icon: "' + destination + 
-                  '" already exists')
-            return
+        shutil.copy(source, destination)
 
-        os.symlink(
-            os.path.join(DARK_ICON_DIR, DARK_ICON_FILENAME),
-            os.path.join(PLASMA_ICON_DIR, DEFAULT_ICON_FILENAME)
-        )
+    print(f"Icon set to match {scheme} color scheme")
 
-    print("Icon set to match", scheme, "color scheme")
 
 async def read_color_scheme(bus):
     msg = Message(
@@ -63,7 +84,7 @@ async def read_color_scheme(bus):
     return reply.body[0]
 
 
-async def add_match(bus):
+async def add_match(bus: MessageBus):
     msg = Message(
         destination="org.freedesktop.DBus",
         path="/org/freedesktop/DBus",
@@ -83,7 +104,8 @@ async def add_match(bus):
     if reply.message_type == MessageType.ERROR:
         raise RuntimeError(f"AddMatch error: {reply.body}")
 
-async def get_name_owner(bus, name):
+
+async def get_name_owner(bus: MessageBus, name: str):
     msg = Message(
         destination="org.freedesktop.DBus",
         path="/org/freedesktop/DBus",
@@ -100,24 +122,7 @@ async def get_name_owner(bus, name):
     return reply.body[0]
 
 
-async def get_connection_unix_pid(bus, unique_name):
-    msg = Message(
-        destination="org.freedesktop.DBus",
-        path="/org/freedesktop/DBus",
-        interface="org.freedesktop.DBus",
-        member="GetConnectionUnixProcessID",
-        signature="s",
-        body=[unique_name],
-    )
-
-    reply = await bus.call(msg)
-    if reply.message_type == MessageType.ERROR:
-        return None
-
-    return reply.body[0]
-
-
-async def wait_until_name_is_free(bus, name, timeout=5.0):
+async def wait_until_name_is_free(bus: MessageBus, name: str, timeout: float = 5.0):
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
 
@@ -130,38 +135,59 @@ async def wait_until_name_is_free(bus, name, timeout=5.0):
     return False
 
 
-async def acquire_or_replace_name(bus):
-    reply = await bus.request_name(BUS_NAME, NameFlag.DO_NOT_QUEUE)
+async def request_existing_instance_to_quit(bus: MessageBus):
+    msg = Message(
+        destination=APP_ID,
+        path=OBJECT_PATH,
+        interface=CONTROL_INTERFACE,
+        member="Quit",
+    )
+
+    reply = await bus.call(msg)
+
+    if reply.message_type == MessageType.ERROR:
+        raise RuntimeError(f"Quit request failed: {reply.body}")
+
+    if reply.body != [True]:
+        raise RuntimeError(f"Unexpected Quit reply: {reply.body}")
+
+
+async def acquire_or_replace_name(bus: MessageBus):
+    reply = await bus.request_name(APP_ID, NameFlag.DO_NOT_QUEUE)
 
     if reply == RequestNameReply.PRIMARY_OWNER:
         return
 
-    owner = await get_name_owner(bus, BUS_NAME)
+    owner = await get_name_owner(bus, APP_ID)
     if owner is None:
-        reply = await bus.request_name(BUS_NAME, NameFlag.DO_NOT_QUEUE)
+        reply = await bus.request_name(APP_ID, NameFlag.DO_NOT_QUEUE)
         if reply == RequestNameReply.PRIMARY_OWNER:
             return
         raise RuntimeError("Unable to acquire D-Bus name")
 
-    pid = await get_connection_unix_pid(bus, owner)
-    if pid is None:
-        raise RuntimeError("Unable to determine PID of existing instance")
+    print("Another instance of ksteamtrayicon is already running. Waiting for it to shutdown...")
+    await request_existing_instance_to_quit(bus)
 
-    print(f"Existing instance detected (PID {pid}). Sending SIGTERM to it...")
-    os.kill(pid, signal.SIGTERM)
-
-    freed = await wait_until_name_is_free(bus, BUS_NAME, timeout=5.0)
+    freed = await wait_until_name_is_free(bus, APP_ID, timeout=5.0)
     if not freed:
-        raise RuntimeError("Existing instance did not exit in time after SIGTERM")
+        raise RuntimeError("Existing instance did not exit in time. Unable to continue.")
 
-    reply = await bus.request_name(BUS_NAME, NameFlag.DO_NOT_QUEUE)
+    reply = await bus.request_name(APP_ID, NameFlag.DO_NOT_QUEUE)
     if reply != RequestNameReply.PRIMARY_OWNER:
-        raise RuntimeError("Unable to acquire D-Bus name after replacing old instance")
+        raise RuntimeError("Failed to acquire D-Bus name. Unable to continue.")
+
+    print("The other instance has completed its shutdown. Continuing...")
+
 
 async def main():
-    os.makedirs(PLASMA_ICON_DIR, exist_ok=True)
+    PLASMA_ICON_DIR.mkdir(parents=True, exist_ok=True)
 
     bus = await MessageBus(bus_type=BusType.SESSION).connect()
+
+    shutdown_event = asyncio.Event()
+    control_interface = ControlInterface(shutdown_event)
+    bus.export(OBJECT_PATH, control_interface)
+
     await acquire_or_replace_name(bus)
 
     current = await read_color_scheme(bus)
@@ -196,7 +222,8 @@ async def main():
     bus.add_message_handler(on_message)
     await add_match(bus)
 
-    await asyncio.Future()
+    await shutdown_event.wait()
+    print("Exiting due to a request from another instance of ksteamtrayicon.")
 
 
 if __name__ == "__main__":
