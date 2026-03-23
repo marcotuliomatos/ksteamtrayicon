@@ -123,16 +123,53 @@ async def get_name_owner(bus: MessageBus, name: str):
 
 
 async def wait_until_name_is_free(bus: MessageBus, name: str, timeout: float = 5.0):
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + timeout
+    freed = asyncio.Event()
 
-    while loop.time() < deadline:
+    def on_name_owner_changed(msg):
+        if (
+            msg.message_type != MessageType.SIGNAL
+            or msg.interface != "org.freedesktop.DBus"
+            or msg.member != "NameOwnerChanged"
+        ):
+            return
+
+        changed_name, old_owner, new_owner = msg.body
+
+        if changed_name == name and new_owner == "":
+            freed.set()
+
+    msg = Message(
+        destination="org.freedesktop.DBus",
+        path="/org/freedesktop/DBus",
+        interface="org.freedesktop.DBus",
+        member="AddMatch",
+        signature="s",
+        body=[
+            "type='signal',"
+            "sender='org.freedesktop.DBus',"
+            "interface='org.freedesktop.DBus',"
+            "member='NameOwnerChanged',"
+            f"arg0='{name}'"
+        ],
+    )
+
+    reply = await bus.call(msg)
+    if reply.message_type == MessageType.ERROR:
+        raise RuntimeError(f"AddMatch error while waiting for {name} to be released: {reply.body}")
+
+    bus.add_message_handler(on_name_owner_changed)
+
+    try:
         owner = await get_name_owner(bus, name)
         if owner is None:
             return True
-        await asyncio.sleep(0.1)
 
-    return False
+        await asyncio.wait_for(freed.wait(), timeout)
+        return True
+    except asyncio.TimeoutError:
+        return False
+    finally:
+        bus.remove_message_handler(on_name_owner_changed)
 
 
 async def request_existing_instance_to_quit(bus: MessageBus):
@@ -192,7 +229,7 @@ async def main():
 
     current = await read_color_scheme(bus)
     last_color_scheme = decode_color_scheme(current)
-    print("Current color scheme:", last_color_scheme)
+    print("Current Plasma color scheme:", last_color_scheme)
     update_icon(last_color_scheme)
 
     def on_message(msg):
