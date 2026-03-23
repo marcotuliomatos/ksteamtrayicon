@@ -46,7 +46,7 @@ run_tests() {
                 echo
                 echo "Since your python environment is externally managed, please install the dbus-next"
                 echo "python library using your distro package manager. Check your distro documentation to"
-                echo "confirm the correct package name and how to properly install it in your system."
+                echo "confirm the exact package name and how to properly install it in your system."
                 exit 1
             else
                 echo "Not found."
@@ -61,7 +61,7 @@ run_tests() {
                     esac
                 done
                 echo
-                pip install dbus-next
+                python3 -m pip install --user dbus-next
             fi
         else
             echo " OK."
@@ -71,7 +71,7 @@ run_tests() {
 
     echo -n "Checking distro type..."
     if $IMMUTABLE; then
-        echo " Immutable (using $PREFIX prefix, instead of /usr)."
+        echo " Immutable (using $PREFIX prefix instead of /usr)."
     else
         echo " Mutable (using the default $PREFIX prefix)."
     fi
@@ -143,7 +143,9 @@ privileged_install() {
     install -d "$MAN_DIR/pt_BR/man1"
     gzip -c man/ksteamtrayicon.1.pt_BR > "$MAN_DIR/pt_BR/man1/ksteamtrayicon.1.gz"
 
-    command -v mandb >/dev/null 2>&1 || true
+    if command -v mandb >/dev/null 2>&1; then
+        mandb >/dev/null 2>&1 || true
+    fi
 
     echo " Done."
     echo
@@ -161,18 +163,32 @@ privileged_install() {
 }
 
 after_install_prompt() {
-    if [[ -e "/etc/xdg/autostart/ksteamtrayicon.desktop" ]]; then
-        start_command="kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop"
+    local desktop_file="/etc/xdg/autostart/ksteamtrayicon.desktop"
+    local kioclient=
 
-        while true; do
-            read -r answer
-            case "$answer" in
-                [Yy]*|"") echo; $start_command; exit;;
-                [Nn]*) echo; break;;
-                    *) ;;
-            esac
-        done
-    fi
+    [[ -e "/etc/xdg/autostart/ksteamtrayicon.desktop" ]] || return
+
+    for kioclient in kioclient6 kioclient5 kioclient; do
+        command -v "$kioclient" >/dev/null 2>&1 && break
+        kioclient=
+    done
+
+    [[ -n "$kioclient" ]] || return
+
+    while true; do
+        read -r answer
+        case "$answer" in
+            [Yy]*|"")
+                echo;
+                "$kioclient" exec "$desktop_file";
+                exit;;
+            [Nn]*)
+                echo;
+                break;;
+            *)
+                ;;
+        esac
+    done
 }
 
 set -e
