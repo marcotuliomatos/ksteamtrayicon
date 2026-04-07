@@ -19,7 +19,7 @@ run_as_root() {
 ask() {
     while true; do
         echo -n "$1 [Y/n] "
-        read -r answer
+        read -r answer < /dev/tty
         case $answer in
             [yY]*|"") return 0 ;;
             [nN]*) return 1 ;;
@@ -60,7 +60,7 @@ install_arch() {
     local helper
     if helper="$(detect_aur_helper)"; then
         echo "Detected AUR helper: $helper"
-        "$helper" -S --needed "$PACKAGE_NAME"
+        "$helper" -S --needed "$PACKAGE_NAME" < /dev/tty
     else
         echo "No AUR helper found (yay, paru, or pikaur)."
         echo "Install one first, or install manually: aur-helper -S $PACKAGE_NAME"
