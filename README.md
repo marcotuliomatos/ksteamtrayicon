@@ -16,87 +16,33 @@ The application listens for changes on the current desktop color scheme and then
 - KDE Plasma 6
 - Python 3
 - `dbus-next` (python library)
-- `pipx` (only for those not installing the AUR package)
+- `pipx`*
+
+*Note:* `pipx` is **not** required on Arch Linux and its derivatives if you run the `install.sh` script with its default parameters (more information below).
 
 ## Installation
 
-### Arch Linux and Arch-based distros (AUR)
-
-[An AUR package is available](https://aur.archlinux.org/packages/ksteamtrayicon) for Arch Linux and Arch-based distros. To install it using your preferred AUR helper, you can issue a command like `aur-helper-command-name -S ksteamtrayicon`.
-
-If you use `yay`:
-```text
-yay -S ksteamtrayicon
-```
-
-If you use `paru`:
-```text
-paru -S ksteamtrayicon
-```
-
-If you use `pikaur`:
-```
-pikaur -S ksteamtrayicon
-```
-
-After installation, you should enable the *KSteamTrayIcon* systemd service.
-
-To enable it just for the current user:
-```text
-systemctl --user enable ksteamtrayicon.service
-```
-
-To enable it for all users:
-```text
-sudo systemctl --global enable ksteamtrayicon.service
-```
-
-After enabling the service, you should start *KSteamTrayIcon*:
-```text
-systemctl --user start ksteamtrayicon.service
-```
-
-### Other distros
-
-First, make sure you are running KDE Plasma 6.x.x and that Python 3 is installed on your system, along with `pipx` and the `dbus-next` Python library. Then run the following command:
+First, check the contents of [install.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh) and if everything seems ok for you, simply run the following command:
 
 ```text
-sudo pipx install --global ksteamtrayicon
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash
 ```
 
-After installation, you should enable the *KSteamTrayIcon* systemd service.
+This installation script will check if the required dependencies are available in your system and will guide you through the setup process.
 
-To enable it just for the current user:
+For users of all distributions except Arch Linux (and distros based on it), the script will install the *KSteamTrayIcon* package available in PyPI, using `pipx`.
+
+For those using Arch Linux or any Arch-based distro, the script defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, make sure `pipx` is installed, then run `install.sh` with the `--force-pypi` flag.
+
 ```text
-systemctl --user enable ksteamtrayicon.service
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash -s -- --force-pypi
 ```
 
-To enable it for all users:
-```text
-sudo systemctl --global enable ksteamtrayicon.service
-```
-
-After enabling the service, you should start *KSteamTrayIcon*:
-```text
-systemctl --user start ksteamtrayicon.service
-```
-
-## Uninstall
-
-### Arch Linux and Arch-based distros (AUR)
+## Uninstallation
+Check the contents of [uninstall.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/uninstall.sh) and if everything seems ok for you, simply run the following command:
 
 ```text
-systemctl --user stop ksteamtrayicon.service
-sudo systemctl --global disable ksteamtrayicon.service
-sudo pacman -Rns ksteamtrayicon
-```
-
-### Other distros
-
-```text
-systemctl --user stop ksteamtrayicon.service
-sudo systemctl --global disable ksteamtrayicon.service
-sudo pipx uninstall --global ksteamtrayicon
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/uninstall.sh | bash
 ```
 
 ## License
