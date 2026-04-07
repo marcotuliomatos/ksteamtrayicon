@@ -125,7 +125,7 @@ enable_and_start() {
     echo ""
     ! ask "Do you want to enable $PACKAGE_NAME for all users?" && {
         ! ask "Enable just for the current user?" && return 0
-        systemctl --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
+        systemctl --quiet --user enable "$PACKAGE_NAME.service"
         echo "Enabled for current user."
         ! ask "Start $PACKAGE_NAME now?" && return 0
         systemctl --user start "$PACKAGE_NAME.service"

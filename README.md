@@ -30,9 +30,9 @@ curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main
 
 This installation script will check if the required dependencies are available in your system and will guide you through the setup process.
 
-For users of all distributions except Arch Linux (and distros based on it), the script will install the *KSteamTrayIcon* package available in PyPI, using `pipx`.
+For users of all distributions except Arch Linux (and distros based on it), the script will install the [*KSteamTrayIcon* PyPI package](https://pypi.org/project/ksteamtrayicon/) using `pipx`.
 
-For those using Arch Linux or any Arch-based distro, the script defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, make sure `pipx` is installed, then run `install.sh` with the `--force-pypi` flag.
+For those on Arch Linux or any Arch-based distro, the script defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, make sure `pipx` is installed, then run `install.sh` with the `--force-pypi` flag.
 
 ```text
 curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash -s -- --force-pypi

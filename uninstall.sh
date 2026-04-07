@@ -89,8 +89,8 @@ echo "Stopping $PACKAGE_NAME service..."
 systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
 
 echo "Disabling $PACKAGE_NAME service..."
-run_as_root systemctl --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
-systemctl --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
+run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
+systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
 
 echo "Removing service file..."
 SERVICE_DIR="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
