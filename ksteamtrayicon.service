@@ -1,0 +1,12 @@
+[Unit]
+Description=Keep the Steam tray icon in sync with the KDE Plasma color scheme
+After=graphical-session.target plasma-core.target
+
+[Service]
+Type=simple
+ExecStart=ksteamtrayicon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,21 +1,22 @@
-# ksteamtrayicon
+# KSteamTrayIcon
 
-*ksteamtrayicon* is a small Python script for KDE Plasma 6 that keeps the Steam tray icon in sync with the desktop color scheme.
+*KSteamTrayIcon* is a small Python background application for KDE Plasma 6 that keeps the Steam tray icon in sync with the desktop color scheme.
 
 ## How does it work?
 
-By default, steam displays a tray icon that looks fine on dark panels, but is hard to see on light Plasma themes.
+By default, Steam displays a tray icon that looks fine on dark panels, but is hard to see on light Plasma themes.
 
-The script listens for changes on the current desktop color scheme and then acts as follows:
+The application listens for changes on the current desktop color scheme and then acts as follows:
 
-- if it detects that the current theme has a light color scheme, it overrides the default Steam tray icon by placing a symlink in `~/.local/share/icons/steam_tray_mono.png` pointing to a custom dark-colored tray icon.
-- if it detects that the current theme has a dark color scheme, it removes the symlink, which changes the Steam tray icon back to the default light-colored one.
+- if it detects that the current theme has a light color scheme, it overrides the default Steam tray icon by placing a dark-colored variant in `$HOME/.local/share/icons/steam_tray_mono.png`.
+- if it detects that the current theme has a dark color scheme, it removes the dark-colored file, which prompts Steam to change its tray icon back to the default light-colored one.
 
 ## Requirements
 
 - KDE Plasma 6
 - Python 3
-- `dbus-next` (Python library)
+- `dbus-next` (python library)
+- `pipx` (only for those not installing the AUR package)
 
 ## Installation
 
@@ -34,62 +35,69 @@ paru -S ksteamtrayicon
 ```
 
 If you use `pikaur`:
-```text
+```
 pikaur -S ksteamtrayicon
 ```
 
-After installation, **restart your KDE Plasma session** to autorun the script or simply issue the following command:
+After installation, you should enable the *KSteamTrayIcon* systemd service.
+
+To enable it just for the current user:
 ```text
-kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop
+systemctl --user enable ksteamtrayicon.service
 ```
 
-### Other distros (`install.sh` script)
-
-First, make sure you are running KDE Plasma version 6.x.x and that Python 3 is installed in your system. If not, please refer to your distro documentation in order to properly install the correct packages.
-
-Next, install the python library `dbus-next`, either with your distro's package manager or with pip:
-
+To enable it for all users:
 ```text
-pip install dbus-next
+sudo systemctl --global enable ksteamtrayicon.service
 ```
 
-Then, download the source code (tarball) for the latest release of *ksteamtrayicon* from [here](https://github.com/marcotuliomatos/ksteamtrayicon/releases/latest/) and extract its contents. For example:
-
+After enabling the service, you should start *KSteamTrayIcon*:
 ```text
-tar zvxf ./ksteamtrayicon-v1.0.3.tar.gz
+systemctl --user start ksteamtrayicon.service
 ```
 
-Now, cd into the *ksteamtrayicon* folder:
+### Other distros
+
+First, make sure you are running KDE Plasma 6.x.x and that Python 3 is installed on your system, along with `pipx` and the `dbus-next` Python library. Then run the following command:
+
 ```text
-cd ksteamtrayicon
+sudo pipx install --global ksteamtrayicon
 ```
 
-Last, but not least, run the `install.sh` script, which will take care of the rest of the installation process:
+After installation, you should enable the *KSteamTrayIcon* systemd service.
 
+To enable it just for the current user:
 ```text
-./install.sh
+systemctl --user enable ksteamtrayicon.service
 ```
 
-**Note:** the `install.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
-
-After installation, **restart your KDE Plasma session** to autorun the script or simply issue the following command:
+To enable it for all users:
 ```text
-kioclient exec /etc/xdg/autostart/ksteamtrayicon.desktop
+sudo systemctl --global enable ksteamtrayicon.service
+```
+
+After enabling the service, you should start *KSteamTrayIcon*:
+```text
+systemctl --user start ksteamtrayicon.service
 ```
 
 ## Uninstall
 
-If you installed *ksteamtrayicon* via AUR, just remove the `ksteamtrayicon` package using pacman:
+### Arch Linux and Arch-based distros (AUR)
+
 ```text
+systemctl --user stop ksteamtrayicon.service
+sudo systemctl --global disable ksteamtrayicon.service
 sudo pacman -Rns ksteamtrayicon
 ```
 
-If you installed *ksteamtrayicon* using the provided `install.sh` script, just run the also provided `uninstall.sh` script:
-```text
-./uninstall.sh
-```
+### Other distros
 
-**Note:** the `uninstall.sh` script requires **root privileges** to run. If you execute it without root permissions, it will ask for your root password.
+```text
+systemctl --user stop ksteamtrayicon.service
+sudo systemctl --global disable ksteamtrayicon.service
+sudo pipx uninstall --global ksteamtrayicon
+```
 
 ## License
 
