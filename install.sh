@@ -4,7 +4,7 @@ set -euo pipefail
 PACKAGE_NAME="ksteamtrayicon"
 REPO_URL="https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main"
 SERVICE_FILE="ksteamtrayicon.service"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || echo "")"
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -82,10 +82,7 @@ install_pipx() {
 
     echo "Installing $PACKAGE_NAME using pipx..."
     run_as_root pipx ensurepath --global
-    run_as_root pipx install --global --force  \
-        --index-url https://test.pypi.org/simple/ \
-        --pip-args="--extra-index-url https://pypi.org/simple" \
-        "$PACKAGE_NAME"
+    run_as_root pipx install --global --force "$PACKAGE_NAME"
 }
 
 get_systemd_user_unit_dir() {
@@ -99,6 +96,13 @@ get_systemd_user_unit_dir() {
 }
 
 get_service_file() {
+    # Try local file first (running from cloned repo)
+    if [[ -n "$SCRIPT_DIR" && -f "$SCRIPT_DIR/$SERVICE_FILE" ]]; then
+        echo "$SCRIPT_DIR/$SERVICE_FILE"
+        return 0
+    fi
+
+    # Download from GitHub (running via curl | bash)
     local tmp
     tmp="$(mktemp)"
     if curl -fsSL "$REPO_URL/$SERVICE_FILE" -o "$tmp"; then
@@ -148,14 +152,14 @@ enable_and_start() {
 
 # --- Main ---
 
-FORCE_PYPI=false
+FORCE_PIPX=false
 for arg in "$@"; do
     case $arg in
-        --force-pypi) FORCE_PYPI=true ;;
+        --force-pipx) FORCE_PIPX=true ;;
     esac
 done
 
-if [[ "$FORCE_PYPI" == false ]] && is_arch_based; then
+if [[ "$FORCE_PIPX" == false ]] && is_arch_based; then
     echo "Arch-based distro detected."
     install_arch
 else
