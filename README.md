@@ -20,7 +20,7 @@ The application listens for changes on the current desktop color scheme and then
 
 *Note:* `pipx` is **not** required on Arch Linux and its derivatives if you run the `install.sh` script with its default parameters (more information below).
 
-## Installation
+## Install
 
 First, check the contents of [install.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh) and if everything seems ok for you, simply run the following command:
 
@@ -38,7 +38,7 @@ For those on Arch Linux or any Arch-based distro, the script defaults to install
 curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash -s -- --force-pypi
 ```
 
-## Uninstallation
+## Uninstall
 Check the contents of [uninstall.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/uninstall.sh) and if everything seems ok for you, simply run the following command:
 
 ```text
