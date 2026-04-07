@@ -19,15 +19,27 @@ run_as_root() {
 }
 
 ask() {
-    while true; do
-        printf "%s [Y/n] " "$1" > /dev/tty
-        read -r answer < /dev/tty
-        case $answer in
-            [yY]*|"") return 0 ;;
-            [nN]*) return 1 ;;
-            *) ;;
-        esac
-    done
+    if [[ "$#" -ge 2 && "$2" == true ]]; then
+        while true; do
+            printf "%s [y/N] " "$1" > /dev/tty
+            read -r answer < /dev/tty
+            case $answer in
+                [yY]*) return 0 ;;
+                [nN]*|"") return 1 ;;
+                *) ;;
+            esac
+        done
+    else
+        while true; do
+            printf "%s [Y/n] " "$1" > /dev/tty
+            read -r answer < /dev/tty
+            case $answer in
+                [yY]*|"") return 0 ;;
+                [nN]*) return 1 ;;
+                *) ;;
+            esac
+        done
+    fi
 }
 
 find_sudo() {
@@ -62,14 +74,30 @@ install_arch() {
     local helper
     if helper="$(detect_aur_helper)"; then
         echo "Detected AUR helper: $helper"
+        echo ""
+        echo "Installing the AUR package..."
         INSTALLER_MARKER="/tmp/ksteamtrayicon-installer.marker"
         touch "$INSTALLER_MARKER"
         trap 'rm -f "$INSTALLER_MARKER"' EXIT
         "$helper" -S --needed "$PACKAGE_NAME" < /dev/tty
     else
         echo "No AUR helper found (yay, paru, or pikaur)."
-        echo "Install one first, or install manually: aur-helper -S $PACKAGE_NAME"
-        exit 1
+        echo ""
+        echo "! WARNING !"
+        echo ""
+        echo "For Arch Linux (and distros based on it) it is recommended to install the"
+        echo "$APP_NAME AUR package. Since no AUR helper was found, this is"
+        echo "currently not possible."
+        echo ""
+        echo "You are advised to install an AUR helper first (yay, paru, or pikaur), and"
+        echo "then re-run this installer script."
+        echo ""
+        echo "However, despite discouraged, you can proceed by installing the $APP_NAME"
+        echo "PyPI package."
+        echo ""
+        ! ask "Do you want to install $APP_NAME using its PyPI package?" true && exit 1
+        install_pipx
+        install_service
     fi
 }
 
@@ -129,21 +157,22 @@ enable_and_start() {
     echo ""
     ! ask "Do you want to enable $APP_NAME for all users?" && {
         ! ask "Enable just for the current user?" && return 0
-        systemctl --quiet --user enable "$PACKAGE_NAME.service"
+        systemctl --quiet --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
         echo "Enabled for current user."
         ! ask "Start $APP_NAME now?" && return 0
-        systemctl --user start "$PACKAGE_NAME.service"
+        systemctl --quiet --user daemon-reload > /dev/null 2>&1
+        systemctl --quiet --user start "$PACKAGE_NAME.service" > /dev/null 2>&1
         echo "Started."
         return 0
     }
 
     find_sudo
-    run_as_root systemctl --global enable "$PACKAGE_NAME.service"
-    echo "Enabled for all users."
+    run_as_root systemctl --quiet --global enable "$PACKAGE_NAME.service" > /dev/null 2>&1
+    echo "$APP_NAME is now enabled for all users."
 
     ! ask "Start $APP_NAME now?" && return 0
-    systemctl --user start "$PACKAGE_NAME.service"
-    echo "Started."
+    systemctl --quiet --user start "$PACKAGE_NAME.service" > /dev/null 2>&1
+    echo "$APP_NAME started."
 }
 
 # --- Main ---

@@ -81,6 +81,18 @@ remove_manpages() {
 
 # --- Main ---
 
+if { is_arch_based && pacman -Qi "$PACKAGE_NAME" > /dev/null 2>&1; } then
+    installed=1
+    echo "Found a $APP_NAME installation (AUR package)."
+elif { pipx list --global --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "; } then
+    installed=2
+    echo "Found a $APP_NAME installation (PyPI package)."
+else
+    echo "$APP_NAME is not installed."
+    exit 1
+fi
+
+echo ""
 echo "You are about to uninstall $APP_NAME."
 ! ask "Do you want to continue?" && echo "Aborted." && exit 0
 
@@ -102,20 +114,24 @@ fi
 echo "Reloading systemd daemon..."
 systemctl --user daemon-reload
 
-if is_arch_based && pacman -Qi "$PACKAGE_NAME" &>/dev/null; then
-    echo "Package installed via pacman/AUR. Removing..."
+if [[ "$installed" == 1 ]]; then
     if helper="$(detect_aur_helper)"; then
+        echo "Uninstalling with $helper..."
         "$helper" -Rns "$PACKAGE_NAME" < /dev/tty
     else
+        echo "Uninstalling with pacman..."
         run_as_root pacman -Rns "$PACKAGE_NAME"
     fi
-else
-    echo "$APP_NAME was installed from PyPI. Uninstalling it with pipx..."
+elif [[ "$installed" == 2 ]]; then
+    echo "Uninstalling with pipx..."
     run_as_root pipx uninstall --global "$PACKAGE_NAME" || true
+else
+    echo "Unexpected uninstaller state. Aborting..."
+    exit 1
 fi
 
 echo "Checking for leftover man pages..."
 remove_manpages
 
 echo ""
-echo "Uninstallation complete."
+echo "$APP_NAME uninstalled successfully."
