@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+APP_NAME="KSteamTrayIcon"
 PACKAGE_NAME="ksteamtrayicon"
 
 command_exists() {
@@ -80,15 +81,15 @@ remove_manpages() {
 
 # --- Main ---
 
-echo "You are about to uninstall $PACKAGE_NAME."
+echo "You are about to uninstall $APP_NAME."
 ! ask "Do you want to continue?" && echo "Aborted." && exit 0
 
 find_sudo
 
-echo "Stopping $PACKAGE_NAME service..."
+echo "Stopping $APP_NAME service..."
 systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
 
-echo "Disabling $PACKAGE_NAME service..."
+echo "Disabling $APP_NAME service..."
 run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
 systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
 
@@ -109,7 +110,7 @@ if is_arch_based && pacman -Qi "$PACKAGE_NAME" &>/dev/null; then
         run_as_root pacman -Rns "$PACKAGE_NAME"
     fi
 else
-    echo "$PACKAGE_NAME was installed from PyPI. Uninstalling it with pipx..."
+    echo "$APP_NAME was installed from PyPI. Uninstalling it with pipx..."
     run_as_root pipx uninstall --global "$PACKAGE_NAME" || true
 fi
 

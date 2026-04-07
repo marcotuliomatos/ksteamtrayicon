@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+APP_NAME="KSteamTrayIcon"
 PACKAGE_NAME="ksteamtrayicon"
 REPO_URL="https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main"
 SERVICE_FILE="ksteamtrayicon.service"
@@ -82,7 +83,7 @@ install_pipx() {
 
     find_sudo
 
-    echo "Installing $PACKAGE_NAME using pipx..."
+    echo "Installing $APP_NAME using pipx..."
     run_as_root pipx ensurepath --global
     run_as_root pipx install --global --force "$PACKAGE_NAME"
 }
@@ -126,11 +127,11 @@ install_service() {
 
 enable_and_start() {
     echo ""
-    ! ask "Do you want to enable $PACKAGE_NAME for all users?" && {
+    ! ask "Do you want to enable $APP_NAME for all users?" && {
         ! ask "Enable just for the current user?" && return 0
         systemctl --quiet --user enable "$PACKAGE_NAME.service"
         echo "Enabled for current user."
-        ! ask "Start $PACKAGE_NAME now?" && return 0
+        ! ask "Start $APP_NAME now?" && return 0
         systemctl --user start "$PACKAGE_NAME.service"
         echo "Started."
         return 0
@@ -140,7 +141,7 @@ enable_and_start() {
     run_as_root systemctl --global enable "$PACKAGE_NAME.service"
     echo "Enabled for all users."
 
-    ! ask "Start $PACKAGE_NAME now?" && return 0
+    ! ask "Start $APP_NAME now?" && return 0
     systemctl --user start "$PACKAGE_NAME.service"
     echo "Started."
 }
