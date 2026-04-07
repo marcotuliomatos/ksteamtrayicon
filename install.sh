@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 PACKAGE_NAME="ksteamtrayicon"
 REPO_URL="https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main"
 SERVICE_FILE="ksteamtrayicon.service"
@@ -18,7 +19,7 @@ run_as_root() {
 
 ask() {
     while true; do
-        echo -n "$1 [Y/n] "
+        printf "%s [Y/n] " "$1" > /dev/tty
         read -r answer < /dev/tty
         case $answer in
             [yY]*|"") return 0 ;;
@@ -124,7 +125,7 @@ enable_and_start() {
     echo ""
     ! ask "Do you want to enable $PACKAGE_NAME for all users?" && {
         ! ask "Enable just for the current user?" && return 0
-        systemctl --user enable "$PACKAGE_NAME.service"
+        systemctl --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
         echo "Enabled for current user."
         ! ask "Start $PACKAGE_NAME now?" && return 0
         systemctl --user start "$PACKAGE_NAME.service"

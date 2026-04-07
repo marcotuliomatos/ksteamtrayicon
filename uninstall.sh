@@ -17,8 +17,8 @@ run_as_root() {
 
 ask() {
     while true; do
-        echo -n "$1 [y/N] "
-        read -r answer
+        printf "%s [y/N] " "$1" > /dev/tty
+        read -r answer < /dev/tty
         case $answer in
             [yY]*) return 0 ;;
             [nN]*|"") return 1 ;;
@@ -92,13 +92,19 @@ echo "Disabling $PACKAGE_NAME service..."
 run_as_root systemctl --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
 systemctl --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
 
+echo "Removing service file..."
+SERVICE_DIR="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+if [[ -n "$SERVICE_DIR" && -f "$SERVICE_DIR/$PACKAGE_NAME.service" ]]; then
+    run_as_root rm -f "$SERVICE_DIR/$PACKAGE_NAME.service"
+fi
+
 echo "Reloading systemd daemon..."
 systemctl --user daemon-reload
 
 if is_arch_based && pacman -Qi "$PACKAGE_NAME" &>/dev/null; then
     echo "Package installed via pacman/AUR. Removing..."
     if helper="$(detect_aur_helper)"; then
-        "$helper" -Rns "$PACKAGE_NAME"
+        "$helper" -Rns "$PACKAGE_NAME" < /dev/tty
     else
         run_as_root pacman -Rns "$PACKAGE_NAME"
     fi
