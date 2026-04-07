@@ -61,6 +61,9 @@ install_arch() {
     local helper
     if helper="$(detect_aur_helper)"; then
         echo "Detected AUR helper: $helper"
+        INSTALLER_MARKER="/tmp/ksteamtrayicon-installer.marker"
+        touch "$INSTALLER_MARKER"
+        trap 'rm -f "$INSTALLER_MARKER"' EXIT
         "$helper" -S --needed "$PACKAGE_NAME" < /dev/tty
     else
         echo "No AUR helper found (yay, paru, or pikaur)."
