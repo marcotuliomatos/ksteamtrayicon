@@ -18,31 +18,31 @@ The application listens for changes on the current desktop color scheme and then
 - `dbus-next` (python library)
 - `pipx`*
 
-*Note:* `pipx` is **not** required on Arch Linux and its derivatives if you run the `install.sh` script with its default parameters (more information below).
+*Note:* by default, `pipx` is **not** required on Arch Linux and its derivatives if you run `setup.sh install` without specifying the `--force-pypi` flag (more information below).
 
 ## Install
 
-First, check the contents of [install.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh) and if everything seems ok for you, simply run the following command:
+First, check the contents of [setup.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh) and if everything seems ok for you, simply run the following command:
 
 ```text
-curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- install
 ```
 
-This installation script will check if the required dependencies are available in your system and will guide you through the setup process.
+The installation script will check if all required dependencies are available in your system and will guide you through the setup process.
 
-For users of all distributions except Arch Linux (and distros based on it), the script will install the [*KSteamTrayIcon* PyPI package](https://pypi.org/project/ksteamtrayicon/) using `pipx`.
+For all distributions except Arch Linux (and distros based on it), the `setup.sh install` command will install the [*KSteamTrayIcon* PyPI package](https://pypi.org/project/ksteamtrayicon/) using `pipx`.
 
-For those on Arch Linux or any Arch-based distro, the script defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, make sure `pipx` is installed, then run `install.sh` with the `--force-pypi` flag.
+For Arch Linux and Arch-based distro, the `setup.sh install` command defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, just use the `setup.sh install-from-pypi` command:
 
 ```text
-curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/install.sh | bash -s -- --force-pypi
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- install-from-pypi
 ```
 
 ## Uninstall
-Check the contents of [uninstall.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/uninstall.sh) and if everything seems ok for you, simply run the following command:
+Check the contents of [setup.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh) and if everything seems ok for you, simply run the following command:
 
 ```text
-curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- uninstall
 ```
 
 ## License

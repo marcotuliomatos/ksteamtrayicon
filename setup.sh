@@ -10,6 +10,7 @@ BOOTSTRAP_VENV="${HOME}/.local/share/pipx-bootstrap"
 LOCAL_BIN_DIR="${HOME}/.local/bin"
 PIPX_BIN="${LOCAL_BIN_DIR}/pipx"
 USER_SYSTEMD_UNIT_DIR="${HOME}/.config/systemd/user"
+USER_SERVICE_PATH="${USER_SYSTEMD_UNIT_DIR}/${PACKAGE_NAME}.service"
 REAL_EXEC="${HOME}/.local/bin/ksteamtrayicon"
 
 command_exists() {
@@ -53,6 +54,9 @@ find_sudo() {
     for candidate in sudo doas; do
         if command_exists "$candidate"; then
             SUDO="$candidate"
+            if ! sudo -n true > /dev/null 2>&1; then
+                echo
+            fi
             if run_as_root true 2>/dev/null; then
                 return 0
             fi
@@ -114,10 +118,10 @@ ensure_pip_in_bootstrap_venv() {
 
     echo "pip was not found inside the bootstrap virtual environment."
 
-    ! ask "Do you want to bootstrap pip with ensurepip?" true && {
-        echo "Cannot continue without pip."
+    if ! ask "Do you want to bootstrap pip with ensurepip?" true; then
+        echo "Cannot continue without pip. Aborting."
         exit 1
-    }
+    fi
 
     "${BOOTSTRAP_VENV}/bin/python" -m ensurepip --upgrade
 }
@@ -132,10 +136,10 @@ ensure_pipx() {
 
     echo "The pipx Python tool was not found in ${LOCAL_BIN_DIR}."
 
-    ! ask "Do you want to install it in your home directory?" && {
-        echo "Cannot continue without pipx."
+    if ! ask "Do you want to install it in your home directory?"; then
+        echo "Cannot continue without pipx. Aborting."
         exit 1
-    }
+    fi
 
     ensure_bootstrap_venv
     ensure_pip_in_bootstrap_venv
@@ -154,6 +158,11 @@ ensure_pipx() {
     echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
 }
 
+has_user_pipx_install() {
+    [[ -x "$PIPX_BIN" ]] || return 1
+    "$PIPX_BIN" list --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "
+}
+
 has_legacy_global_pipx_install() {
     if ! command_exists pipx; then
         return 1
@@ -165,12 +174,28 @@ get_legacy_global_service_dirs() {
     local dirs=()
     local pkgconfig_dir=""
 
-    pkgconfig_dir="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+    if ! pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
+        pkgconfig_dir="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+    fi
 
     [[ -n "$pkgconfig_dir" ]] && dirs+=("$pkgconfig_dir")
     dirs+=("/etc/systemd/user")
 
     printf '%s\n' "${dirs[@]}" | awk '!seen[$0]++'
+}
+
+remove_user_service() {
+    echo "Stopping $APP_NAME user service..."
+    systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    echo "Disabling $APP_NAME user service..."
+    systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    echo "Removing user service file..."
+    rm -f "$USER_SERVICE_PATH"
+
+    echo "Reloading user systemd daemon..."
+    systemctl --user daemon-reload 2>/dev/null || true
 }
 
 remove_legacy_global_service() {
@@ -196,32 +221,81 @@ remove_legacy_global_service() {
     systemctl --user daemon-reload 2>/dev/null || true
 }
 
+remove_pipx_bootstrap_if_unused() {
+    [[ -x "$PIPX_BIN" ]] || return 0
+
+    local remaining
+    remaining="$("$PIPX_BIN" list --short 2>/dev/null || true)"
+
+    if [[ -z "$remaining" ]]; then
+        echo
+        echo -n "A pipx bootstrap environment was created at ${BOOTSTRAP_VENV} "
+        echo "during the installation of the ${APP_NAME} PyPI package and is no longer needed."
+        if ask "Do you want to remove it?"; then
+            rm -rf "$BOOTSTRAP_VENV"
+
+            if [[ -L "$PIPX_BIN" ]]; then
+                rm -f "$PIPX_BIN"
+            fi
+            echo "Removed."
+        fi
+    fi
+}
+
+uninstall_aur() {
+    remove_user_service
+    find_sudo
+    if helper="$(detect_aur_helper)"; then
+        echo "Uninstalling $APP_NAME AUR package with $helper..."
+        "$helper" -Rns "$PACKAGE_NAME" < /dev/tty
+    else
+        echo "Uninstalling $APP_NAME AUR package with pacman..."
+        run_as_root pacman -Rns "$PACKAGE_NAME"
+    fi
+}
+
+uninstall_user_pipx() {
+    remove_user_service
+    echo "Uninstalling $APP_NAME PyPI package with pipx..."
+    "$PIPX_BIN" uninstall "$PACKAGE_NAME" || true
+    remove_pipx_bootstrap_if_unused || true
+}
+
 uninstall_global_pipx() {
     remove_legacy_global_service
     find_sudo
-    echo "Uninstalling legacy global package with pipx..."
+    echo "Uninstalling legacy global PyPI package with pipx..."
     run_as_root pipx uninstall --global "$PACKAGE_NAME" || true
 }
 
-remove_legacy_global_install() {
-    echo "A legacy global pipx installation of $APP_NAME was found."
+prompt_uninstall() {
+    local default_to_no=false
+    [[ "$#" -ge 1 && "$1" == true ]] && default_to_no=true
 
-    ! ask "To safely proceed, it has to be removed. Do you want to continue?" && {
-        echo "Cannot continue safely while the legacy global installation exists."
+    if ! ask "Do you want to remove it?" "$default_to_no"; then
+        echo "Aborted by user request."
+        exit 0
+    fi
+    echo ""
+}
+
+safe_proceed() {
+    echo "To safely proceed, it has to be removed."
+    if ! ask "Do you want to continue?"; then
+        echo "Cannot continue safely without removing it. Aborting."
         exit 1
-    }
+    fi
+}
 
+remove_legacy_global_install() {
+    echo -n "A legacy global installation of $APP_NAME was found. "
+    safe_proceed
     uninstall_global_pipx
 }
 
 remove_legacy_xdg_desktop_autostart_file() {
-    echo "A legacy $APP_NAME XDG autostart .desktop file was found."
-
-    ! ask "To safely proceed, it has to be removed. Do you want to continue?" && {
-        echo "Cannot continue safely while the legacy autostart .desktop file exists."
-        exit 1
-    }
-
+    echo -n "A legacy $APP_NAME XDG autostart .desktop file was found. "
+    safe_proceed
     find_sudo
     run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
 }
@@ -247,9 +321,10 @@ patch_service_file() {
     fi
 }
 
-install_arch() {
+install_aur() {
     local helper
     if helper="$(detect_aur_helper)"; then
+        echo
         echo "Detected AUR helper: $helper"
         echo ""
         echo "Installing the AUR package..."
@@ -272,7 +347,9 @@ install_arch() {
         echo "However, you can proceed by installing the $APP_NAME"
         echo "PyPI package with pipx in your home directory."
         echo ""
-        ! ask "Do you want to install $APP_NAME using its PyPI package?" true && exit 1
+        if ! ask "Do you want to install $APP_NAME using its PyPI package?" true; then
+            exit 1
+        fi
         install_pipx
         install_service
     fi
@@ -307,43 +384,140 @@ enable_and_start() {
 
     systemctl --user daemon-reload > /dev/null 2>&1 || true
 
-    ! ask "Enable $APP_NAME for the current user?" && return 0
+    if ! ask "Enable $APP_NAME for the current user?"; then
+        return 0
+    fi
+    set +e
     systemctl --quiet --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
-    echo "Enabled for current user."
+    [ $? -eq 0 ] && echo "Enabled for the current user." || echo "An error occured while trying to enable it."
+    set -e
 
-    ! ask "Start $APP_NAME now?" && return 0
+    echo
+
+    if ! ask "Start $APP_NAME now?"; then
+        return 0
+    fi
+    set +e
     systemctl --quiet --user start "$PACKAGE_NAME.service" > /dev/null 2>&1
-    echo "Started."
+    [[ $? -eq 0 ]] && echo "Started." || echo "Unable to start it."
+    set -e
 }
 
-# --- Main ---
+check_pipx_installation() {
+    if has_user_pipx_install; then
+        echo
+        echo -n "Found a $APP_NAME PyPI package previously installed with pipx. "
+        safe_proceed
+        uninstall_user_pipx
+    fi
+}
 
-FORCE_PYPI=false
-echo "Starting the $APP_NAME install script..."
-echo ""
+check_aur_installation() {
+    if is_arch_based && pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
+        echo "$APP_NAME is already installed via AUR."
+        echo "Aborting."
+        exit 1
+    fi
+}
 
-for arg in "$@"; do
-    case $arg in
-        --force-pypi) FORCE_PYPI=true ;;
+run_install_main() {
+    echo "Starting the $APP_NAME install script..."
+    echo ""
+
+    if has_legacy_global_pipx_install; then
+        remove_legacy_global_install
+    fi
+
+    if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
+        remove_legacy_xdg_desktop_autostart_file
+    fi
+
+    if [[ "$FORCE_PYPI" == false ]] && is_arch_based; then
+        echo "Arch-based distro detected."
+        check_pipx_installation
+        install_aur
+    else
+        check_aur_installation
+        install_pipx
+        install_service
+    fi
+
+    echo
+    echo "Installation complete."
+    enable_and_start
+}
+
+run_uninstall_main() {
+    local uninstalled=false
+
+    echo "Starting the $APP_NAME uninstall script..."
+
+    if is_arch_based && pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
+        echo
+        echo "Found a $APP_NAME installation (AUR package)."
+        prompt_uninstall true
+        uninstall_aur
+        uninstalled=true
+    fi
+
+    if has_user_pipx_install; then
+        echo
+        echo "Found a $APP_NAME installation (pipx user package)."
+        prompt_uninstall true
+        uninstall_user_pipx
+        uninstalled=true
+    fi
+
+    if has_legacy_global_pipx_install; then
+        echo
+        echo "Found a $APP_NAME installation (legacy pipx global package)."
+        prompt_uninstall
+        uninstall_global_pipx
+        uninstalled=true
+    fi
+
+    if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
+        echo
+        echo "Found a $APP_NAME legacy XDG autostart .desktop file."
+        prompt_uninstall
+        find_sudo
+        run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
+        uninstalled=true
+    fi
+
+    if $uninstalled; then
+        echo "$APP_NAME uninstalled successfully."
+    else
+        echo
+        echo "$APP_NAME is not installed."
+        exit 1
+    fi
+}
+
+main() {
+    local mode="${1:-}"
+
+    case "$mode" in
+        install)
+            FORCE_PYPI=false
+            shift
+            run_install_main "$@"
+            ;;
+        install-from-pypi)
+          echo "foooi"
+            FORCE_PYPI=true
+            shift
+            run_install_main "$@"
+            ;;
+        uninstall)
+            shift
+            run_uninstall_main "$@"
+            ;;
+        *)
+            echo "Usage: $0 {install|uninstall} [args...]"
+            exit 1
+            ;;
     esac
-done
+}
 
-if has_legacy_global_pipx_install; then
-    remove_legacy_global_install
-fi
-
-if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
-    remove_legacy_xdg_desktop_autostart_file
-fi
-
-if [[ "$FORCE_PYPI" == false ]] && is_arch_based; then
-    echo "Arch-based distro detected."
-    install_arch
-else
-    install_pipx
-    install_service
-fi
-
-echo
-echo "Installation complete."
-enable_and_start
+main "$@"
