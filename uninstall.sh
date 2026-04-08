@@ -79,6 +79,23 @@ remove_manpages() {
     done
 }
 
+get_systemd_user_unit_dir() {
+    local candidates=(
+        "$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+        "/etc/systemd/user"
+    )
+
+    for dir in "${candidates[@]}"; do
+        [[ -z "$dir" ]] && continue
+        if run_as_root test -w "$dir" 2>/dev/null || run_as_root test -w "$(dirname "$dir")" 2>/dev/null; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+    done
+
+    return 0
+}
+
 # --- Main ---
 
 if { is_arch_based && pacman -Qi "$PACKAGE_NAME" > /dev/null 2>&1; } then
@@ -106,7 +123,7 @@ run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/nu
 systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
 
 echo "Removing service file..."
-SERVICE_DIR="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+SERVICE_DIR="$(get_systemd_user_unit_dir)"
 if [[ -n "$SERVICE_DIR" && -f "$SERVICE_DIR/$PACKAGE_NAME.service" ]]; then
     run_as_root rm -f "$SERVICE_DIR/$PACKAGE_NAME.service"
 fi

@@ -117,13 +117,21 @@ install_pipx() {
 }
 
 get_systemd_user_unit_dir() {
-    local dir
-    dir="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
-    if [[ -z "$dir" ]]; then
-        echo "Error: unable to determine the systemd user unit directory with pkg-config."
-        exit 1
-    fi
-    printf '%s\n' "$dir"
+    local candidates=(
+        "$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+        "/etc/systemd/user"
+    )
+
+    for dir in "${candidates[@]}"; do
+        [[ -z "$dir" ]] && continue
+        if run_as_root test -w "$dir" 2>/dev/null || run_as_root test -w "$(dirname "$dir")" 2>/dev/null; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+    done
+
+    echo "Error: unable to determine the systemd user unit directory."
+    exit 1
 }
 
 get_service_file() {
