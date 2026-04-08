@@ -130,7 +130,10 @@ remove_pipx_bootstrap_if_unused() {
     remaining="$("$PIPX_BIN" list --short 2>/dev/null || true)"
 
     if [[ -z "$remaining" ]]; then
-        if ask "Remove the pipx bootstrap environment at ${BOOTSTRAP_VENV} too?"; then
+        echo
+        echo "A pipx bootstrap environment was created at ${BOOTSTRAP_VENV}"
+        echo "during the installation of ${APP_NAME} and no longer is needed."
+        if ask "Do you want to remove it?"; then
             rm -rf "$BOOTSTRAP_VENV"
 
             if [[ -L "$PIPX_BIN" ]]; then
@@ -156,7 +159,7 @@ uninstall_user_pipx() {
     remove_user_service
     echo "Uninstalling with pipx..."
     "$PIPX_BIN" uninstall "$PACKAGE_NAME" || true
-    remove_pipx_bootstrap_if_unused
+    remove_pipx_bootstrap_if_unused || true
 }
 
 uninstall_global_pipx() {
@@ -173,39 +176,45 @@ prompt_uninstall() {
 
 # --- Main ---
 
-installed=false
+uninstalled=false
+echo "Starting the $APP_NAME uninstall script..."
+
 if is_arch_based && pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
+    echo
     echo "Found a $APP_NAME installation (AUR package)."
     prompt_uninstall
     uninstall_aur
-    installed=true
+    uninstalled=true
 fi
 
 if has_user_pipx_install; then
+    echo
     echo "Found a $APP_NAME installation (pipx user package)."
     prompt_uninstall
     uninstall_user_pipx
-    installed=true
+    uninstalled=true
 fi
 
 if has_legacy_global_pipx_install; then
+    echo
     echo "Found a $APP_NAME installation (legacy pipx global package)."
     prompt_uninstall
     uninstall_global_pipx
-    installed=true
+    uninstalled=true
 fi
 
 if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
-    find_sudo
+    echo
     echo "Found a $APP_NAME legacy XDG autostart .desktop file. Removing it..."
+    find_sudo
     run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
-    installed=true
+    uninstalled=true
 fi
 
-if $installed; then
-    echo ""
-    echo "$APP_NAME uninstalled successfully."
+if $uninstalled; then
+    echo
+    echo "$APP_NAME ununinstalled successfully."
 else
-    echo "$APP_NAME is not installed."
+    echo "$APP_NAME is not uninstalled."
     exit 1
 fi

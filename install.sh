@@ -130,9 +130,9 @@ ensure_pipx() {
         return 0
     fi
 
-    echo "pipx was not found in ${LOCAL_BIN_DIR}."
+    echo "The pipx Python tool was not found in ${LOCAL_BIN_DIR}."
 
-    ! ask "Do you want to install pipx in your home directory?" true && {
+    ! ask "Do you want to install it in your home directory?" true && {
         echo "Cannot continue without pipx."
         exit 1
     }
@@ -319,6 +319,9 @@ enable_and_start() {
 # --- Main ---
 
 FORCE_PYPI=false
+echo "Starting the $APP_NAME install script..."
+echo ""
+
 for arg in "$@"; do
     case $arg in
         --force-pypi) FORCE_PYPI=true ;;
