@@ -504,7 +504,6 @@ main() {
             run_install_main "$@"
             ;;
         install-from-pypi)
-          echo "foooi"
             FORCE_PYPI=true
             shift
             run_install_main "$@"
