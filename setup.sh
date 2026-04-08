@@ -273,7 +273,7 @@ prompt_uninstall() {
     local default_to_no=false
     [[ "$#" -ge 1 && "$1" == true ]] && default_to_no=true
 
-    if ! ask "Do you want to remove it?" "$default_to_no"; then
+    if ! ask "Do you want to continue?" "$default_to_no"; then
         echo "Aborted by user request."
         exit 0
     fi
@@ -281,7 +281,6 @@ prompt_uninstall() {
 }
 
 safe_proceed() {
-    echo "To safely proceed, it has to be removed."
     if ! ask "Do you want to continue?"; then
         echo "Cannot continue safely without removing it. Aborting."
         exit 1
@@ -289,14 +288,14 @@ safe_proceed() {
 }
 
 remove_legacy_global_install() {
-    echo -n "A legacy global installation of $APP_NAME was found. "
-    safe_proceed
+    echo "A legacy global installation of $APP_NAME was found and needs to be removed."
+    [[ "$#" -ge 1 && "$1" == true ]] && prompt_uninstall || safe_proceed
     uninstall_global_pipx
 }
 
 remove_legacy_xdg_desktop_autostart_file() {
-    echo -n "A legacy $APP_NAME XDG autostart .desktop file was found. "
-    safe_proceed
+    echo "A legacy $APP_NAME XDG autostart .desktop file was found and needs to be removed."
+    [[ "$#" -ge 1 && "$1" == true ]] && prompt_uninstall || safe_proceed
     find_sudo
     run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
 }
@@ -471,25 +470,20 @@ run_uninstall_main() {
 
     if has_legacy_global_pipx_install; then
         echo
-        echo "Found a $APP_NAME installation (legacy pipx global package)."
-        prompt_uninstall
-        uninstall_global_pipx
+        remove_legacy_global_install true
         uninstalled=true
     fi
 
     if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
         echo
-        echo "Found a $APP_NAME legacy XDG autostart .desktop file."
-        prompt_uninstall
-        find_sudo
-        run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
+        remove_legacy_xdg_desktop_autostart_file true
         uninstalled=true
     fi
 
+    echo
     if $uninstalled; then
         echo "$APP_NAME uninstalled successfully."
     else
-        echo
         echo "$APP_NAME is not installed."
         exit 1
     fi
