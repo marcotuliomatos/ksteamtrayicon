@@ -132,7 +132,7 @@ ensure_pipx() {
 
     echo "The pipx Python tool was not found in ${LOCAL_BIN_DIR}."
 
-    ! ask "Do you want to install it in your home directory?" true && {
+    ! ask "Do you want to install it in your home directory?" && {
         echo "Cannot continue without pipx."
         exit 1
     }
@@ -344,6 +344,6 @@ else
     install_service
 fi
 
-echo ""
+echo
 echo "Installation complete."
 enable_and_start

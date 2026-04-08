@@ -23,15 +23,27 @@ run_as_root() {
 }
 
 ask() {
-    while true; do
-        printf "%s [y/N] " "$1" > /dev/tty
-        read -r answer < /dev/tty
-        case $answer in
-            [yY]*) return 0 ;;
-            [nN]*|"") return 1 ;;
-            *) ;;
-        esac
-    done
+    if [[ "$#" -ge 2 && "$2" == true ]]; then
+        while true; do
+            printf "%s [y/N] " "$1" > /dev/tty
+            read -r answer < /dev/tty
+            case $answer in
+                [yY]*) return 0 ;;
+                [nN]*|"") return 1 ;;
+                *) ;;
+            esac
+        done
+    else
+        while true; do
+            printf "%s [Y/n] " "$1" > /dev/tty
+            read -r answer < /dev/tty
+            case $answer in
+                [yY]*|"") return 0 ;;
+                [nN]*) return 1 ;;
+                *) ;;
+            esac
+        done
+    fi
 }
 
 find_sudo() {
@@ -132,7 +144,7 @@ remove_pipx_bootstrap_if_unused() {
     if [[ -z "$remaining" ]]; then
         echo
         echo "A pipx bootstrap environment was created at ${BOOTSTRAP_VENV}"
-        echo "during the installation of ${APP_NAME} and no longer is needed."
+        echo "during the installation of ${APP_NAME} and is no longer needed."
         if ask "Do you want to remove it?"; then
             rm -rf "$BOOTSTRAP_VENV"
 
@@ -170,7 +182,11 @@ uninstall_global_pipx() {
 }
 
 prompt_uninstall() {
-    ! ask "Do you want to remove it?" && echo "Aborted." && exit 0
+    [[ "$#" -ge 1 && "$1" == true ]] && default_to_no=true || default_to_no=false
+    if ! ask "Do you want to remove it?" $default_to_no; then
+        echo "Aborted."
+        exit 0
+    fi
     echo ""
 }
 
@@ -182,7 +198,7 @@ echo "Starting the $APP_NAME uninstall script..."
 if is_arch_based && pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
     echo
     echo "Found a $APP_NAME installation (AUR package)."
-    prompt_uninstall
+    prompt_uninstall true
     uninstall_aur
     uninstalled=true
 fi
@@ -190,7 +206,7 @@ fi
 if has_user_pipx_install; then
     echo
     echo "Found a $APP_NAME installation (pipx user package)."
-    prompt_uninstall
+    prompt_uninstall true
     uninstall_user_pipx
     uninstalled=true
 fi
@@ -205,16 +221,17 @@ fi
 
 if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
     echo
-    echo "Found a $APP_NAME legacy XDG autostart .desktop file. Removing it..."
+    echo "Found a $APP_NAME legacy XDG autostart .desktop file."
+    prompt_uninstall
     find_sudo
     run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
     uninstalled=true
 fi
 
+echo
 if $uninstalled; then
-    echo
-    echo "$APP_NAME ununinstalled successfully."
+    echo "$APP_NAME uninstalled successfully."
 else
-    echo "$APP_NAME is not uninstalled."
+    echo "$APP_NAME is not installed."
     exit 1
 fi
