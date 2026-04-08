@@ -18,7 +18,7 @@ The application listens for changes on the current desktop color scheme and then
 - `dbus-next` (python library)
 - `pipx`*
 
-*Note:* by default, `pipx` is **not** required on Arch Linux and its derivatives if you run `setup.sh install` without specifying the `--force-pypi` flag (more information below).
+*Note:* `pipx` is only required when installing *KSteamTrayIcon* from PyPI. Installing it from the AUR (on Arch Linux and its derivatives) does not require `pipx` (check the *Install* section below for more details).
 
 ## Install
 
@@ -28,22 +28,19 @@ First, check the contents of [setup.sh](https://raw.githubusercontent.com/marcot
 curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- install
 ```
 
-The installation script will check if all required dependencies are available in your system and will guide you through the setup process.
+The installation script checks whether all required dependencies are available on your system and guides you through the setup process.
 
-For all distributions except Arch Linux (and distros based on it), the `setup.sh install` command will install the [*KSteamTrayIcon* PyPI package](https://pypi.org/project/ksteamtrayicon/) using `pipx`.
+On all distributions except Arch Linux and its derivatives, `setup.sh install` installs the [*KSteamTrayIcon* PyPI package](https://pypi.org/project/ksteamtrayicon/) using `pipx`.
 
-For Arch Linux and Arch-based distro, the `setup.sh install` command defaults to install the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which doesn't require `pipx` at all. If, for whatever reason, you prefer to install the package from PyPI instead, just use the `setup.sh install-from-pypi` command:
+On Arch Linux and Arch-based distributions, `setup.sh install` defaults to installing the [*KSteamTrayIcon* AUR package](https://aur.archlinux.org/packages/ksteamtrayicon), which does not require `pipx`. If, for whatever reason, you would prefer to install the package from PyPI instead, use `setup.sh install-from-pypi`:
 
 ```text
 curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- install-from-pypi
 ```
 
 ## Uninstall
-Check the contents of [setup.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh) and if everything seems ok for you, simply run the following command:
 
-```text
-curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- uninstall
-```
+Check the contents of [setup.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh) and if everything seems ok for you, simply run the following command:
 
 ## License
 
