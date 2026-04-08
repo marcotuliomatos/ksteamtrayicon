@@ -3,6 +3,12 @@ set -euo pipefail
 
 APP_NAME="KSteamTrayIcon"
 PACKAGE_NAME="ksteamtrayicon"
+LEGACY_XDG_AUTOSTART_DESKTOP_FILE="/etc/xdg/autostart/ksteamtrayicon.desktop"
+LOCAL_BIN_DIR="${HOME}/.local/bin"
+PIPX_BIN="${LOCAL_BIN_DIR}/pipx"
+BOOTSTRAP_VENV="${HOME}/.local/share/pipx-bootstrap"
+USER_SYSTEMD_UNIT_DIR="${HOME}/.config/systemd/user"
+USER_SERVICE_PATH="${USER_SYSTEMD_UNIT_DIR}/${PACKAGE_NAME}.service"
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -56,82 +62,87 @@ detect_aur_helper() {
     return 1
 }
 
-get_pipx_value() {
-    pipx environment --global --value "$1" 2>/dev/null
+has_user_pipx_install() {
+    [[ -x "$PIPX_BIN" ]] || return 1
+    "$PIPX_BIN" list --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "
 }
 
-remove_manpages() {
-    local paths=(
-        "/usr/share/man"
-        "/usr/local/share/man"
-    )
-
-    local pipx_man
-    pipx_man="$(get_pipx_value PIPX_MAN_DIR 2>/dev/null || true)"
-    [[ -n "$pipx_man" ]] && paths+=("$pipx_man")
-
-    for root in "${paths[@]}"; do
-        [[ -d "$root" ]] || continue
-        while IFS= read -r -d '' f; do
-            echo "  Removing $f"
-            run_as_root rm -f "$f"
-        done < <(find "$root" -name "${PACKAGE_NAME}.1" -print0 2>/dev/null)
-    done
+has_legacy_global_pipx_install() {
+    if ! command_exists pipx; then
+        return 1
+    fi
+    pipx list --global --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "
 }
 
-get_systemd_user_unit_dir() {
-    local candidates=(
-        "$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
-        "/etc/systemd/user"
-    )
+remove_user_service() {
+    echo "Stopping $APP_NAME user service..."
+    systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
 
-    for dir in "${candidates[@]}"; do
-        [[ -z "$dir" ]] && continue
-        if run_as_root test -w "$dir" 2>/dev/null || run_as_root test -w "$(dirname "$dir")" 2>/dev/null; then
-            printf '%s\n' "$dir"
-            return 0
+    echo "Disabling $APP_NAME user service..."
+    systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    echo "Removing user service file..."
+    rm -f "$USER_SERVICE_PATH"
+
+    echo "Reloading user systemd daemon..."
+    systemctl --user daemon-reload 2>/dev/null || true
+}
+
+get_legacy_global_service_dirs() {
+    local dirs=()
+    local pkgconfig_dir=""
+
+    pkgconfig_dir="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+
+    [[ -n "$pkgconfig_dir" ]] && dirs+=("$pkgconfig_dir")
+    dirs+=("/etc/systemd/user")
+
+    printf '%s\n' "${dirs[@]}" | awk '!seen[$0]++'
+}
+
+remove_legacy_global_service() {
+    find_sudo
+
+    echo "Stopping legacy user service..."
+    systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    echo "Disabling legacy global service..."
+    run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
+    systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    local dir
+    while IFS= read -r dir; do
+        [[ -n "$dir" ]] || continue
+        if [[ -f "$dir/${PACKAGE_NAME}.service" ]]; then
+            echo "Removing legacy global service file from $dir..."
+            run_as_root rm -f "$dir/${PACKAGE_NAME}.service"
         fi
-    done
+    done < <(get_legacy_global_service_dirs)
 
-    return 0
+    echo "Reloading user systemd daemon..."
+    systemctl --user daemon-reload 2>/dev/null || true
 }
 
-# --- Main ---
+remove_pipx_bootstrap_if_unused() {
+    [[ -x "$PIPX_BIN" ]] || return 0
 
-if { is_arch_based && pacman -Qi "$PACKAGE_NAME" > /dev/null 2>&1; } then
-    installed=1
-    echo "Found a $APP_NAME installation (AUR package)."
-elif { pipx list --global --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "; } then
-    installed=2
-    echo "Found a $APP_NAME installation (PyPI package)."
-else
-    echo "$APP_NAME is not installed."
-    exit 1
-fi
+    local remaining
+    remaining="$("$PIPX_BIN" list --short 2>/dev/null || true)"
 
-echo ""
-echo "You are about to uninstall $APP_NAME."
-! ask "Do you want to continue?" && echo "Aborted." && exit 0
+    if [[ -z "$remaining" ]]; then
+        if ask "Remove the pipx bootstrap environment at ${BOOTSTRAP_VENV} too?"; then
+            rm -rf "$BOOTSTRAP_VENV"
 
-find_sudo
+            if [[ -L "$PIPX_BIN" ]]; then
+                rm -f "$PIPX_BIN"
+            fi
+        fi
+    fi
+}
 
-echo "Stopping $APP_NAME service..."
-systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
-
-echo "Disabling $APP_NAME service..."
-run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
-systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
-
-echo "Removing service file..."
-SERVICE_DIR="$(get_systemd_user_unit_dir)"
-if [[ -n "$SERVICE_DIR" && -f "$SERVICE_DIR/$PACKAGE_NAME.service" ]]; then
-    run_as_root rm -f "$SERVICE_DIR/$PACKAGE_NAME.service"
-fi
-
-echo "Reloading systemd daemon..."
-systemctl --user daemon-reload
-
-if [[ "$installed" == 1 ]]; then
+uninstall_aur() {
+    remove_user_service
+    find_sudo
     if helper="$(detect_aur_helper)"; then
         echo "Uninstalling with $helper..."
         "$helper" -Rns "$PACKAGE_NAME" < /dev/tty
@@ -139,16 +150,62 @@ if [[ "$installed" == 1 ]]; then
         echo "Uninstalling with pacman..."
         run_as_root pacman -Rns "$PACKAGE_NAME"
     fi
-elif [[ "$installed" == 2 ]]; then
+}
+
+uninstall_user_pipx() {
+    remove_user_service
     echo "Uninstalling with pipx..."
+    "$PIPX_BIN" uninstall "$PACKAGE_NAME" || true
+    remove_pipx_bootstrap_if_unused
+}
+
+uninstall_global_pipx() {
+    remove_legacy_global_service
+    find_sudo
+    echo "Uninstalling legacy global package with pipx..."
     run_as_root pipx uninstall --global "$PACKAGE_NAME" || true
-else
-    echo "Unexpected uninstaller state. Aborting..."
-    exit 1
+}
+
+prompt_uninstall() {
+    ! ask "Do you want to remove it?" && echo "Aborted." && exit 0
+    echo ""
+}
+
+# --- Main ---
+
+installed=false
+if is_arch_based && pacman -Qi "$PACKAGE_NAME" >/dev/null 2>&1; then
+    echo "Found a $APP_NAME installation (AUR package)."
+    prompt_uninstall
+    uninstall_aur
+    installed=true
 fi
 
-echo "Checking for leftover man pages..."
-remove_manpages
+if has_user_pipx_install; then
+    echo "Found a $APP_NAME installation (pipx user package)."
+    prompt_uninstall
+    uninstall_user_pipx
+    installed=true
+fi
 
-echo ""
-echo "$APP_NAME uninstalled successfully."
+if has_legacy_global_pipx_install; then
+    echo "Found a $APP_NAME installation (legacy pipx global package)."
+    prompt_uninstall
+    uninstall_global_pipx
+    installed=true
+fi
+
+if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
+    find_sudo
+    echo "Found a $APP_NAME legacy XDG autostart .desktop file. Removing it..."
+    run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
+    installed=true
+fi
+
+if $installed; then
+    echo ""
+    echo "$APP_NAME uninstalled successfully."
+else
+    echo "$APP_NAME is not installed."
+    exit 1
+fi

@@ -5,6 +5,12 @@ APP_NAME="KSteamTrayIcon"
 PACKAGE_NAME="ksteamtrayicon"
 REPO_URL="https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main"
 SERVICE_FILE="ksteamtrayicon.service"
+LEGACY_XDG_AUTOSTART_DESKTOP_FILE="/etc/xdg/autostart/ksteamtrayicon.desktop"
+BOOTSTRAP_VENV="${HOME}/.local/share/pipx-bootstrap"
+LOCAL_BIN_DIR="${HOME}/.local/bin"
+PIPX_BIN="${LOCAL_BIN_DIR}/pipx"
+USER_SYSTEMD_UNIT_DIR="${HOME}/.config/systemd/user"
+REAL_EXEC="${HOME}/.local/bin/ksteamtrayicon"
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -70,6 +76,177 @@ detect_aur_helper() {
     return 1
 }
 
+get_service_file() {
+    local tmp
+    tmp="$(mktemp)"
+    if curl -fsSL "$REPO_URL/$SERVICE_FILE" -o "$tmp"; then
+        echo "$tmp"
+        return 0
+    fi
+
+    echo "Error: could not find or download $SERVICE_FILE."
+    exit 1
+}
+
+ensure_python3() {
+    if ! command_exists python3; then
+        echo "python3 is not installed or not available in PATH."
+        exit 1
+    fi
+}
+
+ensure_local_bin_dir() {
+    mkdir -p "$LOCAL_BIN_DIR"
+}
+
+ensure_bootstrap_venv() {
+    if [[ ! -x "${BOOTSTRAP_VENV}/bin/python" ]]; then
+        echo "Creating pipx bootstrap virtual environment in:"
+        echo "  $BOOTSTRAP_VENV"
+        python3 -m venv "$BOOTSTRAP_VENV"
+    fi
+}
+
+ensure_pip_in_bootstrap_venv() {
+    if [[ -x "${BOOTSTRAP_VENV}/bin/pip" ]]; then
+        return 0
+    fi
+
+    echo "pip was not found inside the bootstrap virtual environment."
+
+    ! ask "Do you want to bootstrap pip with ensurepip?" true && {
+        echo "Cannot continue without pip."
+        exit 1
+    }
+
+    "${BOOTSTRAP_VENV}/bin/python" -m ensurepip --upgrade
+}
+
+ensure_pipx() {
+    ensure_python3
+    ensure_local_bin_dir
+
+    if [[ -x "$PIPX_BIN" ]]; then
+        return 0
+    fi
+
+    echo "pipx was not found in ${LOCAL_BIN_DIR}."
+
+    ! ask "Do you want to install pipx in your home directory?" true && {
+        echo "Cannot continue without pipx."
+        exit 1
+    }
+
+    ensure_bootstrap_venv
+    ensure_pip_in_bootstrap_venv
+
+    echo "Installing pipx in the bootstrap virtual environment..."
+    "${BOOTSTRAP_VENV}/bin/python" -m pip install --upgrade pip setuptools wheel
+    "${BOOTSTRAP_VENV}/bin/python" -m pip install --upgrade pipx
+
+    ln -sf "${BOOTSTRAP_VENV}/bin/pipx" "$PIPX_BIN"
+
+    echo ""
+    echo "pipx installed at:"
+    echo "  $PIPX_BIN"
+    echo ""
+    echo "If needed, add this to your shell profile:"
+    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+}
+
+has_legacy_global_pipx_install() {
+    if ! command_exists pipx; then
+        return 1
+    fi
+    pipx list --global --short 2>/dev/null | grep -q "^${PACKAGE_NAME} "
+}
+
+get_legacy_global_service_dirs() {
+    local dirs=()
+    local pkgconfig_dir=""
+
+    pkgconfig_dir="$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
+
+    [[ -n "$pkgconfig_dir" ]] && dirs+=("$pkgconfig_dir")
+    dirs+=("/etc/systemd/user")
+
+    printf '%s\n' "${dirs[@]}" | awk '!seen[$0]++'
+}
+
+remove_legacy_global_service() {
+    find_sudo
+
+    echo "Stopping legacy user service..."
+    systemctl --user stop "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    echo "Disabling legacy global service..."
+    run_as_root systemctl --quiet --global disable "$PACKAGE_NAME.service" 2>/dev/null || true
+    systemctl --quiet --user disable "$PACKAGE_NAME.service" 2>/dev/null || true
+
+    local dir
+    while IFS= read -r dir; do
+        [[ -n "$dir" ]] || continue
+        if [[ -f "$dir/${PACKAGE_NAME}.service" ]]; then
+            echo "Removing legacy global service file from $dir..."
+            run_as_root rm -f "$dir/${PACKAGE_NAME}.service"
+        fi
+    done < <(get_legacy_global_service_dirs)
+
+    echo "Reloading user systemd daemon..."
+    systemctl --user daemon-reload 2>/dev/null || true
+}
+
+uninstall_global_pipx() {
+    remove_legacy_global_service
+    find_sudo
+    echo "Uninstalling legacy global package with pipx..."
+    run_as_root pipx uninstall --global "$PACKAGE_NAME" || true
+}
+
+remove_legacy_global_install() {
+    echo "A legacy global pipx installation of $APP_NAME was found."
+
+    ! ask "To safely proceed, it has to be removed. Do you want to continue?" && {
+        echo "Cannot continue safely while the legacy global installation exists."
+        exit 1
+    }
+
+    uninstall_global_pipx
+}
+
+remove_legacy_xdg_desktop_autostart_file() {
+    echo "A legacy $APP_NAME XDG autostart .desktop file was found."
+
+    ! ask "To safely proceed, it has to be removed. Do you want to continue?" && {
+        echo "Cannot continue safely while the legacy autostart .desktop file exists."
+        exit 1
+    }
+
+    find_sudo
+    run_as_root rm -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE"
+}
+
+patch_service_file() {
+    local service_src="$1"
+    local detected_exec=""
+
+    if [[ -x "$REAL_EXEC" ]]; then
+        detected_exec="$REAL_EXEC"
+    elif command -v ksteamtrayicon >/dev/null 2>&1; then
+        detected_exec="$(command -v ksteamtrayicon)"
+    else
+        echo "Error: could not find ksteamtrayicon executable."
+        exit 1
+    fi
+
+    if grep -q '^ExecStart=' "$service_src"; then
+        sed -i "s|^ExecStart=.*|ExecStart=$detected_exec|" "$service_src"
+    else
+        echo "Error: no ExecStart line found in $SERVICE_FILE."
+        exit 1
+    fi
+}
+
 install_arch() {
     local helper
     if helper="$(detect_aur_helper)"; then
@@ -92,8 +269,8 @@ install_arch() {
         echo "You are advised to install an AUR helper first (yay, paru, or pikaur), and"
         echo "then re-run this installer script."
         echo ""
-        echo "However, despite discouraged, you can proceed by installing the $APP_NAME"
-        echo "PyPI package."
+        echo "However, you can proceed by installing the $APP_NAME"
+        echo "PyPI package with pipx in your home directory."
         echo ""
         ! ask "Do you want to install $APP_NAME using its PyPI package?" true && exit 1
         install_pipx
@@ -102,85 +279,41 @@ install_arch() {
 }
 
 install_pipx() {
-    for cmd in python3 pipx; do
-        if ! command_exists "$cmd"; then
-            echo "Error: $cmd is not installed or not available in PATH."
-            exit 1
-        fi
-    done
-
-    find_sudo
+    ensure_pipx
 
     echo "Installing $APP_NAME using pipx..."
-    run_as_root pipx ensurepath --global
-    run_as_root pipx install --global --force "$PACKAGE_NAME"
-}
-
-get_systemd_user_unit_dir() {
-    local candidates=(
-        "$(pkg-config systemd --variable=systemduserunitdir 2>/dev/null || true)"
-        "/etc/systemd/user"
-    )
-
-    for dir in "${candidates[@]}"; do
-        [[ -z "$dir" ]] && continue
-        if run_as_root test -w "$dir" 2>/dev/null || run_as_root test -w "$(dirname "$dir")" 2>/dev/null; then
-            printf '%s\n' "$dir"
-            return 0
-        fi
-    done
-
-    echo "Error: unable to determine the systemd user unit directory."
-    exit 1
-}
-
-get_service_file() {
-    local tmp
-    tmp="$(mktemp)"
-    if curl -fsSL "$REPO_URL/$SERVICE_FILE" -o "$tmp"; then
-        echo "$tmp"
-        return 0
-    fi
-
-    echo "Error: could not find or download $SERVICE_FILE."
-    exit 1
+    "$PIPX_BIN" install --force "$PACKAGE_NAME"
 }
 
 install_service() {
-    if ! command_exists pkg-config; then
-        echo "Error: pkg-config is not installed or not available in PATH."
-        exit 1
-    fi
-
     local unit_dir service_src
-    unit_dir="$(get_systemd_user_unit_dir)"
+    unit_dir="$USER_SYSTEMD_UNIT_DIR"
     service_src="$(get_service_file)"
 
+    patch_service_file "$service_src"
+
     echo "Installing systemd user service in $unit_dir..."
-    run_as_root mkdir -p "$unit_dir"
-    run_as_root install -Dm644 "$service_src" "$unit_dir/$SERVICE_FILE"
+    mkdir -p "$unit_dir"
+    install -Dm644 "$service_src" "$unit_dir/$SERVICE_FILE"
 }
 
 enable_and_start() {
     echo ""
-    ! ask "Do you want to enable $APP_NAME for all users?" && {
-        ! ask "Enable just for the current user?" && return 0
-        systemctl --quiet --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
-        echo "Enabled for current user."
-        ! ask "Start $APP_NAME now?" && return 0
-        systemctl --quiet --user daemon-reload > /dev/null 2>&1
-        systemctl --quiet --user start "$PACKAGE_NAME.service" > /dev/null 2>&1
-        echo "Started."
-        return 0
-    }
 
-    find_sudo
-    run_as_root systemctl --quiet --global enable "$PACKAGE_NAME.service" > /dev/null 2>&1
-    echo "$APP_NAME is now enabled for all users."
+    if ! command_exists systemctl; then
+        echo "systemctl is not installed or not available in PATH."
+        return 0
+    fi
+
+    systemctl --user daemon-reload > /dev/null 2>&1 || true
+
+    ! ask "Enable $APP_NAME for the current user?" && return 0
+    systemctl --quiet --user enable "$PACKAGE_NAME.service" > /dev/null 2>&1
+    echo "Enabled for current user."
 
     ! ask "Start $APP_NAME now?" && return 0
     systemctl --quiet --user start "$PACKAGE_NAME.service" > /dev/null 2>&1
-    echo "$APP_NAME started."
+    echo "Started."
 }
 
 # --- Main ---
@@ -191,6 +324,14 @@ for arg in "$@"; do
         --force-pypi) FORCE_PYPI=true ;;
     esac
 done
+
+if has_legacy_global_pipx_install; then
+    remove_legacy_global_install
+fi
+
+if [[ -f "$LEGACY_XDG_AUTOSTART_DESKTOP_FILE" ]]; then
+    remove_legacy_xdg_desktop_autostart_file
+fi
 
 if [[ "$FORCE_PYPI" == false ]] && is_arch_based; then
     echo "Arch-based distro detected."
