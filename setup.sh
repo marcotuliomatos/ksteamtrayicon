@@ -118,7 +118,7 @@ ensure_pip_in_bootstrap_venv() {
 
     echo "pip was not found inside the bootstrap virtual environment."
 
-    if ! ask "Do you want to bootstrap pip with ensurepip?" true; then
+    if ! ask "Do you want to bootstrap pip with ensurepip?"; then
         echo "Cannot continue without pip. Aborting."
         exit 1
     fi
