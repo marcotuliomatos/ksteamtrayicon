@@ -42,6 +42,10 @@ curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main
 
 Check the contents of [setup.sh](https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh) and if everything seems ok for you, simply run the following command:
 
+```text
+curl -fsSL https://raw.githubusercontent.com/marcotuliomatos/ksteamtrayicon/main/setup.sh | bash -s -- uninstall
+```
+
 ## License
 
 MIT
